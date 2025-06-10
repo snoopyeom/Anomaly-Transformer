@@ -14,7 +14,7 @@ import pickle
 
 
 class PSMSegLoader(object):
-    def __init__(self, data_path, win_size, step, mode="train"):
+    def __init__(self, data_path, win_size, step, mode="train", train_start=0.0, train_end=1.0):
         self.mode = mode
         self.step = step
         self.win_size = win_size
@@ -33,7 +33,9 @@ class PSMSegLoader(object):
 
         self.test = self.scaler.transform(test_data)
 
-        self.train = data
+        start = int(len(data) * train_start)
+        end = int(len(data) * train_end)
+        self.train = data[start:end]
         self.val = self.test
 
         self.test_labels = pd.read_csv(data_path + '/test_label.csv').values[:, 1:]
@@ -70,7 +72,7 @@ class PSMSegLoader(object):
 
 
 class MSLSegLoader(object):
-    def __init__(self, data_path, win_size, step, mode="train"):
+    def __init__(self, data_path, win_size, step, mode="train", train_start=0.0, train_end=1.0):
         self.mode = mode
         self.step = step
         self.win_size = win_size
@@ -80,8 +82,9 @@ class MSLSegLoader(object):
         data = self.scaler.transform(data)
         test_data = np.load(data_path + "/MSL_test.npy")
         self.test = self.scaler.transform(test_data)
-
-        self.train = data
+        start = int(len(data) * train_start)
+        end = int(len(data) * train_end)
+        self.train = data[start:end]
         self.val = self.test
         self.test_labels = np.load(data_path + "/MSL_test_label.npy")
         print("test:", self.test.shape)
@@ -114,7 +117,7 @@ class MSLSegLoader(object):
 
 
 class SMAPSegLoader(object):
-    def __init__(self, data_path, win_size, step, mode="train"):
+    def __init__(self, data_path, win_size, step, mode="train", train_start=0.0, train_end=1.0):
         self.mode = mode
         self.step = step
         self.win_size = win_size
@@ -124,8 +127,9 @@ class SMAPSegLoader(object):
         data = self.scaler.transform(data)
         test_data = np.load(data_path + "/SMAP_test.npy")
         self.test = self.scaler.transform(test_data)
-
-        self.train = data
+        start = int(len(data) * train_start)
+        end = int(len(data) * train_end)
+        self.train = data[start:end]
         self.val = self.test
         self.test_labels = np.load(data_path + "/SMAP_test_label.npy")
         print("test:", self.test.shape)
@@ -158,7 +162,7 @@ class SMAPSegLoader(object):
 
 
 class SMDSegLoader(object):
-    def __init__(self, data_path, win_size, step, mode="train"):
+    def __init__(self, data_path, win_size, step, mode="train", train_start=0.0, train_end=1.0):
         self.mode = mode
         self.step = step
         self.win_size = win_size
@@ -168,7 +172,9 @@ class SMDSegLoader(object):
         data = self.scaler.transform(data)
         test_data = np.load(data_path + "/SMD_test.npy")
         self.test = self.scaler.transform(test_data)
-        self.train = data
+        start = int(len(data) * train_start)
+        end = int(len(data) * train_end)
+        self.train = data[start:end]
         data_len = len(self.train)
         self.val = self.train[(int)(data_len * 0.8):]
         self.test_labels = np.load(data_path + "/SMD_test_label.npy")
@@ -199,15 +205,15 @@ class SMDSegLoader(object):
                 self.test_labels[index // self.step * self.win_size:index // self.step * self.win_size + self.win_size])
 
 
-def get_loader_segment(data_path, batch_size, win_size=100, step=100, mode='train', dataset='KDD'):
+def get_loader_segment(data_path, batch_size, win_size=100, step=100, mode='train', dataset='KDD', train_start=0.0, train_end=1.0):
     if (dataset == 'SMD'):
-        dataset = SMDSegLoader(data_path, win_size, step, mode)
+        dataset = SMDSegLoader(data_path, win_size, step, mode, train_start, train_end)
     elif (dataset == 'MSL'):
-        dataset = MSLSegLoader(data_path, win_size, 1, mode)
+        dataset = MSLSegLoader(data_path, win_size, 1, mode, train_start, train_end)
     elif (dataset == 'SMAP'):
-        dataset = SMAPSegLoader(data_path, win_size, 1, mode)
+        dataset = SMAPSegLoader(data_path, win_size, 1, mode, train_start, train_end)
     elif (dataset == 'PSM'):
-        dataset = PSMSegLoader(data_path, win_size, 1, mode)
+        dataset = PSMSegLoader(data_path, win_size, 1, mode, train_start, train_end)
 
     shuffle = False
     if mode == 'train':
