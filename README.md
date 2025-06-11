@@ -39,6 +39,8 @@ We compare our model with 15 baselines, including THOC, InterFusion, etc. **Gene
 The `incremental_experiment.py` script runs a sequence of training phases where
 increasing portions of the dataset are used. After each phase it evaluates the
 model and finally plots the F1 score versus the fraction of training data.
+In addition to the incremental updates, baseline models are trained from scratch
+with the same fractions of data so that their performance can be compared.
 
 ### Required arguments
 
@@ -62,7 +64,8 @@ python incremental_experiment.py \
 ```
 
 The resulting plot `incremental_results.png` will be saved in
-`--model_save_path`.
+`--model_save_path` and shows the F1 curves for both incremental and
+baseline training.
 
 ## Citation
 If you find this repo useful, please cite our paper.
