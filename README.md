@@ -34,8 +34,38 @@ We compare our model with 15 baselines, including THOC, InterFusion, etc. **Gene
 <img src=".\pics\result.png" height = "450" alt="" align=center />
 </p>
 
+## Incremental Experiment
+
+The `incremental_experiment.py` script runs a sequence of training phases where
+increasing portions of the dataset are used. After each phase it evaluates the
+model and finally plots the F1 score versus the fraction of training data.
+
+### Required arguments
+
+- `--dataset`: name of the dataset to use.
+- `--data_path`: path to the dataset directory.
+- `--win_size`: sliding window size (default `100`).
+- `--input_c`: number of input channels.
+- `--output_c`: number of output channels.
+- `--batch_size`: training batch size (default `256`).
+- `--num_epochs`: epochs for each training phase (default `10`).
+- `--anormly_ratio`: anomaly ratio in training set (default `1.0`).
+- `--model_save_path`: directory for checkpoints and results
+  (default `checkpoints`).
+
+### Example
+
+```bash
+python incremental_experiment.py \
+    --dataset SMD --data_path dataset/SMD \
+    --input_c 38 --output_c 38
+```
+
+The resulting plot `incremental_results.png` will be saved in
+`--model_save_path`.
+
 ## Citation
-If you find this repo useful, please cite our paper. 
+If you find this repo useful, please cite our paper.
 
 ```
 @inproceedings{
