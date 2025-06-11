@@ -1,7 +1,22 @@
 import argparse
 import os
 import subprocess
+import re
+import matplotlib.pyplot as plt
 
+
+def parse_metrics(output):
+    """Extract accuracy, precision, recall and F1 from solver output."""
+    pattern = r"Accuracy\s*:\s*([0-9\.]+),\s*Precision\s*:\s*([0-9\.]+),\s*Recall\s*:\s*([0-9\.]+),\s*F-score\s*:\s*([0-9\.]+)"
+    match = re.search(pattern, output)
+    if match:
+        return {
+            "accuracy": float(match.group(1)),
+            "precision": float(match.group(2)),
+            "recall": float(match.group(3)),
+            "f1": float(match.group(4)),
+        }
+    return None
 
 def run_phase(args, tag, start, end, load_model=None):
     train_cmd = [
@@ -37,6 +52,10 @@ def run_phase(args, tag, start, end, load_model=None):
         '--model_save_path', args.model_save_path,
         '--model_tag', tag
     ]
+    result = subprocess.run(test_cmd, capture_output=True, text=True, check=True)
+    metrics = parse_metrics(result.stdout)
+    return metrics
+  
     subprocess.run(test_cmd, check=True)
 
 
@@ -55,6 +74,13 @@ def main():
 
     os.makedirs(args.model_save_path, exist_ok=True)
 
+    results = []
+
+    # initial training with first 50%
+    metrics = run_phase(args, 'init50', 0.0, 0.5)
+    if metrics:
+        results.append((0.5, 'init50', metrics))
+        
     # initial training with first 50%
     run_phase(args, 'init50', 0.0, 0.5)
     prev_tag = 'init50'
@@ -65,11 +91,28 @@ def main():
         end = start + 0.1
         tag = f'update_{i+1}'
         load = os.path.join(args.model_save_path, f'{prev_tag}_checkpoint.pth')
+        metrics = run_phase(args, tag, start, end, load)
+        if metrics:
+            results.append((end, tag, metrics))
         run_phase(args, tag, start, end, load)
         prev_tag = tag
         start = end
 
     # full data baseline
+    metrics = run_phase(args, 'full_batch', 0.0, 1.0)
+    if metrics:
+        results.append((1.0, 'full_batch', metrics))
+
+    if results:
+        fractions = [r[0] for r in results]
+        f1s = [r[2]['f1'] for r in results]
+        plt.figure()
+        plt.plot(fractions, f1s, marker='o')
+        plt.xlabel('Training Data Fraction')
+        plt.ylabel('F1 Score')
+        plt.title('Incremental Training Performance')
+        plt.grid(True)
+        plt.savefig(os.path.join(args.model_save_path, 'incremental_results.png'))
     run_phase(args, 'full_batch', 0.0, 1.0)
 
 
