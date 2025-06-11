@@ -18,7 +18,6 @@ def parse_metrics(output):
         }
     return None
 
-
 def run_phase(args, tag, start, end, load_model=None):
     train_cmd = [
         'python', 'main.py',
@@ -56,6 +55,8 @@ def run_phase(args, tag, start, end, load_model=None):
     result = subprocess.run(test_cmd, capture_output=True, text=True, check=True)
     metrics = parse_metrics(result.stdout)
     return metrics
+  
+    subprocess.run(test_cmd, check=True)
 
 
 def main():
@@ -79,6 +80,9 @@ def main():
     metrics = run_phase(args, 'init50', 0.0, 0.5)
     if metrics:
         results.append((0.5, 'init50', metrics))
+        
+    # initial training with first 50%
+    run_phase(args, 'init50', 0.0, 0.5)
     prev_tag = 'init50'
 
     # incremental updates
@@ -90,6 +94,7 @@ def main():
         metrics = run_phase(args, tag, start, end, load)
         if metrics:
             results.append((end, tag, metrics))
+        run_phase(args, tag, start, end, load)
         prev_tag = tag
         start = end
 
@@ -108,6 +113,7 @@ def main():
         plt.title('Incremental Training Performance')
         plt.grid(True)
         plt.savefig(os.path.join(args.model_save_path, 'incremental_results.png'))
+    run_phase(args, 'full_batch', 0.0, 1.0)
 
 
 if __name__ == '__main__':
