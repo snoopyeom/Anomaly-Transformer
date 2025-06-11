@@ -35,7 +35,10 @@ if __name__ == '__main__':
     parser.add_argument('--input_c', type=int, default=38)
     parser.add_argument('--output_c', type=int, default=38)
     parser.add_argument('--batch_size', type=int, default=1024)
-    parser.add_argument('--pretrained_model', type=str, default=None)
+    parser.add_argument('--load_model', type=str, default=None)
+    parser.add_argument('--train_start', type=float, default=0.0)
+    parser.add_argument('--train_end', type=float, default=1.0)
+    parser.add_argument('--model_tag', type=str, default=None)
     parser.add_argument('--dataset', type=str, default='credit')
     parser.add_argument('--mode', type=str, default='train', choices=['train', 'test'])
     parser.add_argument('--data_path', type=str, default='./dataset/creditcard_ts.csv')
@@ -43,6 +46,8 @@ if __name__ == '__main__':
     parser.add_argument('--anormly_ratio', type=float, default=4.00)
 
     config = parser.parse_args()
+    if config.model_tag is None:
+        config.model_tag = config.dataset
 
     args = vars(config)
     print('------------ Options -------------')
