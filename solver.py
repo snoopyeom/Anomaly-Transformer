@@ -69,18 +69,31 @@ class Solver(object):
 
         self.__dict__.update(Solver.DEFAULTS, **config)
 
+        self.model_tag = getattr(self, 'model_tag', self.dataset)
+        self.load_model = getattr(self, 'load_model', None)
+        self.train_start = getattr(self, 'train_start', 0.0)
+        self.train_end = getattr(self, 'train_end', 1.0)
+
         self.train_loader = get_loader_segment(self.data_path, batch_size=self.batch_size, win_size=self.win_size,
                                                mode='train',
-                                               dataset=self.dataset)
+                                               dataset=self.dataset,
+                                               train_start=self.train_start,
+                                               train_end=self.train_end)
         self.vali_loader = get_loader_segment(self.data_path, batch_size=self.batch_size, win_size=self.win_size,
                                               mode='val',
-                                              dataset=self.dataset)
+                                              dataset=self.dataset,
+                                              train_start=self.train_start,
+                                              train_end=self.train_end)
         self.test_loader = get_loader_segment(self.data_path, batch_size=self.batch_size, win_size=self.win_size,
                                               mode='test',
-                                              dataset=self.dataset)
+                                              dataset=self.dataset,
+                                              train_start=self.train_start,
+                                              train_end=self.train_end)
         self.thre_loader = get_loader_segment(self.data_path, batch_size=self.batch_size, win_size=self.win_size,
                                               mode='thre',
-                                              dataset=self.dataset)
+                                              dataset=self.dataset,
+                                              train_start=self.train_start,
+                                              train_end=self.train_end)
 
         self.build_model()
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -135,8 +148,12 @@ class Solver(object):
         path = self.model_save_path
         if not os.path.exists(path):
             os.makedirs(path)
-        early_stopping = EarlyStopping(patience=3, verbose=True, dataset_name=self.dataset)
+        early_stopping = EarlyStopping(patience=3, verbose=True, dataset_name=self.model_tag)
         train_steps = len(self.train_loader)
+
+        if self.load_model is not None and os.path.isfile(self.load_model):
+            self.model.load_state_dict(torch.load(self.load_model))
+            print(f"Loaded pretrained model from {self.load_model}")
 
         for epoch in range(self.num_epochs):
             iter_count = 0
@@ -205,9 +222,10 @@ class Solver(object):
             adjust_learning_rate(self.optimizer, epoch + 1, self.lr)
 
     def test(self):
-        self.model.load_state_dict(
-            torch.load(
-                os.path.join(str(self.model_save_path), str(self.dataset) + '_checkpoint.pth')))
+        ckpt_path = self.load_model
+        if ckpt_path is None:
+            ckpt_path = os.path.join(str(self.model_save_path), str(self.model_tag) + '_checkpoint.pth')
+        self.model.load_state_dict(torch.load(ckpt_path))
         self.model.eval()
         temperature = 50
 
