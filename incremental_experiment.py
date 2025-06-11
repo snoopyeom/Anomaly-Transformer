@@ -53,7 +53,16 @@ def run_phase(args, tag, start, end, load_model=None):
         '--model_tag', tag
     ]
     result = subprocess.run(test_cmd, capture_output=True, text=True, check=True)
+    print(result.stdout)
     metrics = parse_metrics(result.stdout)
+    if metrics:
+        print(
+            f"[{tag}] {start*100:.0f}-{end*100:.0f}% -> "
+            f"Accuracy {metrics['accuracy']:.4f}, "
+            f"Precision {metrics['precision']:.4f}, "
+            f"Recall {metrics['recall']:.4f}, "
+            f"F1 {metrics['f1']:.4f}"
+        )
     return metrics
   
     subprocess.run(test_cmd, check=True)
