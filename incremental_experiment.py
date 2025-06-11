@@ -19,6 +19,7 @@ def parse_metrics(output):
     return None
 
 def run_phase(args, tag, start, end, load_model=None):
+    """Train and evaluate a model on a data segment."""
     train_cmd = [
         'python', 'main.py',
         '--mode', 'train',
@@ -78,39 +79,46 @@ def main():
 
     os.makedirs(args.model_save_path, exist_ok=True)
 
-    results = []
+    inc_results = []
 
     # initial training with first 50%
-    metrics = run_phase(args, 'init50', 0.0, 0.5)
+    metrics = run_phase(args, 'inc_init50', 0.0, 0.5)
     if metrics:
-        results.append((0.5, 'init50', metrics))
-    prev_tag = 'init50'
+        inc_results.append((0.5, metrics))
+    prev_tag = 'inc_init50'
 
     # incremental updates
     start = 0.5
     for i in range(5):
         end = start + 0.1
-        tag = f'update_{i+1}'
+        tag = f'inc_update_{i+1}'
         load = os.path.join(args.model_save_path, f'{prev_tag}_checkpoint.pth')
         metrics = run_phase(args, tag, start, end, load)
         if metrics:
-            results.append((end, tag, metrics))
+            inc_results.append((end, metrics))
         prev_tag = tag
         start = end
 
-    # full data baseline
-    metrics = run_phase(args, 'full_batch', 0.0, 1.0)
-    if metrics:
-        results.append((1.0, 'full_batch', metrics))
+    # baseline models trained from scratch with varying fractions
+    baseline_results = []
+    for frac in [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]:
+        tag = f'baseline_{int(frac*100)}'
+        metrics = run_phase(args, tag, 0.0, frac)
+        if metrics:
+            baseline_results.append((frac, metrics))
 
-    if results:
-        fractions = [r[0] for r in results]
-        f1s = [r[2]['f1'] for r in results]
+    if inc_results and baseline_results:
+        inc_fracs = [r[0] for r in inc_results]
+        inc_f1s = [r[1]['f1'] for r in inc_results]
+        base_fracs = [r[0] for r in baseline_results]
+        base_f1s = [r[1]['f1'] for r in baseline_results]
         plt.figure()
-        plt.plot(fractions, f1s, marker='o')
+        plt.plot(inc_fracs, inc_f1s, marker='o', label='Incremental')
+        plt.plot(base_fracs, base_f1s, marker='s', label='Baseline')
         plt.xlabel('Training Data Fraction')
         plt.ylabel('F1 Score')
-        plt.title('Incremental Training Performance')
+        plt.title('Incremental vs. Baseline Performance')
+        plt.legend()
         plt.grid(True)
         plt.savefig(os.path.join(args.model_save_path, 'incremental_results.png'))
 
