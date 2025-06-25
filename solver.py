@@ -6,6 +6,7 @@ import os
 import time
 from utils.utils import *
 from model.AnomalyTransformer import AnomalyTransformer
+from model.transformer_vae import AnomalyTransformerWithVAE, train_model_with_replay
 from data_factory.data_loader import get_loader_segment
 
 
@@ -63,7 +64,11 @@ class EarlyStopping:
 
 
 class Solver(object):
-    DEFAULTS = {}
+    DEFAULTS = {
+        'model_type': 'transformer',
+        'latent_dim': 16,
+        'beta': 1.0,
+    }
 
     def __init__(self, config):
 
@@ -100,7 +105,18 @@ class Solver(object):
         self.criterion = nn.MSELoss()
 
     def build_model(self):
-        self.model = AnomalyTransformer(win_size=self.win_size, enc_in=self.input_c, c_out=self.output_c, e_layers=3)
+        if getattr(self, 'model_type', 'transformer') == 'transformer_vae':
+            self.model = AnomalyTransformerWithVAE(
+                win_size=self.win_size,
+                enc_in=self.input_c,
+                latent_dim=getattr(self, 'latent_dim', 16),
+                beta=getattr(self, 'beta', 1.0))
+        else:
+            self.model = AnomalyTransformer(
+                win_size=self.win_size,
+                enc_in=self.input_c,
+                c_out=self.output_c,
+                e_layers=3)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
 
         if torch.cuda.is_available():
@@ -163,10 +179,21 @@ class Solver(object):
             self.model.train()
             for i, (input_data, labels) in enumerate(self.train_loader):
 
-                self.optimizer.zero_grad()
                 iter_count += 1
                 input = input_data.float().to(self.device)
 
+                if getattr(self, 'model_type', 'transformer') == 'transformer_vae':
+                    loss = train_model_with_replay(self.model, self.optimizer, input)
+                    loss1_list.append(loss)
+                    if (i + 1) % 100 == 0:
+                        speed = (time.time() - time_now) / iter_count
+                        left_time = speed * ((self.num_epochs - epoch) * train_steps - i)
+                        print('\tspeed: {:.4f}s/iter; left time: {:.4f}s'.format(speed, left_time))
+                        iter_count = 0
+                        time_now = time.time()
+                    continue
+
+                self.optimizer.zero_grad()
                 output, series, prior, _ = self.model(input)
 
                 # calculate Association discrepancy
@@ -175,17 +202,17 @@ class Solver(object):
                 for u in range(len(prior)):
                     series_loss += (torch.mean(my_kl_loss(series[u], (
                             prior[u] / torch.unsqueeze(torch.sum(prior[u], dim=-1), dim=-1).repeat(1, 1, 1,
-                                                                                                   self.win_size)).detach())) + torch.mean(
+                   self.win_size)).detach())) + torch.mean(
                         my_kl_loss((prior[u] / torch.unsqueeze(torch.sum(prior[u], dim=-1), dim=-1).repeat(1, 1, 1,
-                                                                                                           self.win_size)).detach(),
+                           self.win_size)).detach(),
                                    series[u])))
                     prior_loss += (torch.mean(my_kl_loss(
                         (prior[u] / torch.unsqueeze(torch.sum(prior[u], dim=-1), dim=-1).repeat(1, 1, 1,
-                                                                                                self.win_size)),
+                self.win_size)),
                         series[u].detach())) + torch.mean(
                         my_kl_loss(series[u].detach(), (
                                 prior[u] / torch.unsqueeze(torch.sum(prior[u], dim=-1), dim=-1).repeat(1, 1, 1,
-                                                                                                       self.win_size)))))
+                       self.win_size)))))
                 series_loss = series_loss / len(prior)
                 prior_loss = prior_loss / len(prior)
 

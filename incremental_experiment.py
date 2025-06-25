@@ -31,6 +31,9 @@ def run_phase(args, tag, start, end, load_model=None):
         '--batch_size', str(args.batch_size),
         '--num_epochs', str(args.num_epochs),
         '--anormly_ratio', str(args.anormly_ratio),
+        '--model_type', args.model_type,
+        '--latent_dim', str(args.latent_dim),
+        '--beta', str(args.beta),
         '--model_save_path', args.model_save_path,
         '--model_tag', tag,
         '--train_start', str(start),
@@ -50,6 +53,9 @@ def run_phase(args, tag, start, end, load_model=None):
         '--output_c', str(args.output_c),
         '--batch_size', str(args.batch_size),
         '--anormly_ratio', str(args.anormly_ratio),
+        '--model_type', args.model_type,
+        '--latent_dim', str(args.latent_dim),
+        '--beta', str(args.beta),
         '--model_save_path', args.model_save_path,
         '--model_tag', tag
     ]
@@ -75,6 +81,10 @@ def main():
     parser.add_argument('--num_epochs', type=int, default=10)
     parser.add_argument('--anormly_ratio', type=float, default=1.0)
     parser.add_argument('--model_save_path', type=str, default='checkpoints')
+    parser.add_argument('--model_type', type=str, default='transformer',
+                        choices=['transformer', 'transformer_vae'])
+    parser.add_argument('--latent_dim', type=int, default=16)
+    parser.add_argument('--beta', type=float, default=1.0)
     args = parser.parse_args()
 
     os.makedirs(args.model_save_path, exist_ok=True)
