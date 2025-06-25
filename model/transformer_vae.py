@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import random
+import warnings
 
 from .AnomalyTransformer import EncoderLayer, Encoder
 from .attn import AnomalyAttention, AttentionLayer
@@ -130,6 +131,9 @@ class AnomalyTransformerWithVAE(nn.Module):
 def detect_drift_with_ruptures(window: np.ndarray, pen: int = 20) -> bool:
     if rpt is None:
         raise ImportError("ruptures is required for drift detection")
+    # accept batches in (batch, seq_len, features) form
+    if window.ndim == 3:
+        window = window.reshape(window.shape[0], -1)
     algo = rpt.Pelt(model="l2").fit(window)
     result = algo.predict(pen=pen)
     return len(result) > 1
@@ -145,12 +149,15 @@ def train_model_with_replay(model: AnomalyTransformerWithVAE,
         try:
             drift = detect_drift_with_ruptures(current_data.detach().cpu().numpy())
         except Exception:
+            warnings.warn("Change point detection failed; proceeding without replay")
             drift = False
         if drift:
             drift_detected = True
             replay = model.generate_replay_samples(len(current_data))
             if replay is not None:
                 data = torch.cat([current_data, replay], dim=0)
+    else:
+        warnings.warn("ruptures not installed; CPD updates will not run")
     recon, _, _, _ = model(data)
     loss = model.loss_function(recon, data)
     optimizer.zero_grad()
