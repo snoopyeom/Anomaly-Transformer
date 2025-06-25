@@ -63,6 +63,7 @@ class Solver(object):
         'latent_dim': 16,
         'beta': 1.0,
         'replay_size': 1000,
+        'anomaly_ratio': 1.0,
     }
 
     def __init__(self, config):
@@ -326,7 +327,7 @@ class Solver(object):
         attens_energy = np.concatenate(attens_energy, axis=0).reshape(-1)
         test_energy = np.array(attens_energy)
         combined_energy = np.concatenate([train_energy, test_energy], axis=0)
-        thresh = np.percentile(combined_energy, 100 - self.anormly_ratio)
+        thresh = np.percentile(combined_energy, 100 - self.anomaly_ratio)
         print("Threshold :", thresh)
 
         # (3) evaluation on the test set

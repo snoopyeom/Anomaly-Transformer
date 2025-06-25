@@ -28,10 +28,7 @@ class AnomalyTransformerWithVAE(nn.Module):
 
     def __init__(self, win_size, enc_in, d_model=512, n_heads=8, e_layers=3,
                  d_ff=512, dropout=0.0, activation='gelu', latent_dim=16,
-
-                 beta=1.0):
-
-                 beta=1.0, replay_size: int = 1000):
+                 beta: float = 1.0, replay_size: int = 1000):
 
         super().__init__()
         self.win_size = win_size
