@@ -7,17 +7,12 @@ import random
 from .AnomalyTransformer import EncoderLayer, Encoder
 from .attn import AnomalyAttention, AttentionLayer
 from .embed import DataEmbedding
+from utils.utils import my_kl_loss
 
 try:
     import ruptures as rpt
 except ImportError:  # ruptures might not be installed
     rpt = None
-
-
-def my_kl_loss(p, q):
-    res = p * (torch.log(p + 1e-4) - torch.log(q + 1e-4))
-    return torch.mean(torch.sum(res, dim=-1), dim=1)
-
 
 class AnomalyTransformerWithVAE(nn.Module):
     """Anomaly Transformer augmented with a VAE branch."""
