@@ -8,6 +8,7 @@ from utils.utils import my_kl_loss
 from model.AnomalyTransformer import AnomalyTransformer
 from model.transformer_vae import AnomalyTransformerWithVAE, train_model_with_replay
 from data_factory.data_loader import get_loader_segment
+import matplotlib.pyplot as plt
 
 def adjust_learning_rate(optimizer, epoch, lr_):
     lr_adjust = {epoch: lr_ * (0.5 ** ((epoch - 1) // 1))}
@@ -165,6 +166,7 @@ class Solver(object):
             os.makedirs(path)
         early_stopping = EarlyStopping(patience=3, verbose=True, dataset_name=self.model_tag)
         train_steps = len(self.train_loader)
+        self.history = []
 
         if self.load_model is not None and os.path.isfile(self.load_model):
             self.model.load_state_dict(torch.load(self.load_model))
@@ -239,6 +241,7 @@ class Solver(object):
             train_loss = np.average(loss1_list)
 
             vali_loss1, vali_loss2 = self.vali(self.test_loader)
+            self.history.append((self.update_count, vali_loss1))
 
             print(
                 "Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} ".format(
@@ -251,6 +254,17 @@ class Solver(object):
 
         if getattr(self, 'model_type', 'transformer') == 'transformer_vae':
             print(f"CPD triggered updates: {self.update_count}")
+            if self.history:
+                counts, losses = zip(*self.history)
+                plt.figure()
+                plt.plot(counts, losses, marker='o')
+                plt.xlabel('CPD Updates')
+                plt.ylabel('Validation Loss')
+                plt.title('Validation Loss vs CPD Updates')
+                plt.grid(True)
+                plt.tight_layout()
+                plt.savefig(os.path.join(path, 'update_performance.png'))
+                plt.close()
 
     def test(self):
         ckpt_path = self.load_model
