@@ -4,16 +4,10 @@ import torch.nn.functional as F
 import numpy as np
 import os
 import time
-from utils.utils import *
+from utils.utils import my_kl_loss
 from model.AnomalyTransformer import AnomalyTransformer
 from model.transformer_vae import AnomalyTransformerWithVAE, train_model_with_replay
 from data_factory.data_loader import get_loader_segment
-
-
-def my_kl_loss(p, q):
-    res = p * (torch.log(p + 0.0001) - torch.log(q + 0.0001))
-    return torch.mean(torch.sum(res, dim=-1), dim=1)
-
 
 def adjust_learning_rate(optimizer, epoch, lr_):
     lr_adjust = {epoch: lr_ * (0.5 ** ((epoch - 1) // 1))}
