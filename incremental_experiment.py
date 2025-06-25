@@ -7,9 +7,11 @@ from main import main as run_main
 
 
 def train_and_test(args: argparse.Namespace) -> None:
-    """주어진 설정으로 학습 후 평가를 수행한다."""
+    """Train and then evaluate, printing CPD update count."""
     args.mode = "train"
-    run_main(args)
+    solver = run_main(args)
+    if hasattr(solver, "update_count"):
+        print(f"Total CPD updates: {solver.update_count}")
     args.mode = "test"
     args.load_model = os.path.join(
         args.model_save_path, f"{args.model_tag}_checkpoint.pth")
@@ -26,6 +28,8 @@ def main():
     parser.add_argument('--output_c', type=int, required=True)
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--num_epochs', type=int, default=10)
+    parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument('--k', type=int, default=3)
     parser.add_argument('--anomaly_ratio', type=float, default=1.0)
     parser.add_argument('--model_save_path', type=str, default='checkpoints')
 
