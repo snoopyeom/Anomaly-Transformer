@@ -66,6 +66,8 @@ approach leverages the VAE branch to mitigate concept drift.
   `transformer_vae`).
 
 After training, the script prints the number of updates triggered by CPD events.
+Install the `ruptures` package (e.g., via `pip install ruptures`) so that these
+change-point detection updates can occur.
 
 ### Example
 
