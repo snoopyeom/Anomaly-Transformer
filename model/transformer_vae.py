@@ -24,11 +24,12 @@ class AnomalyTransformerWithVAE(nn.Module):
 
     def __init__(self, win_size, enc_in, d_model=512, n_heads=8, e_layers=3,
                  d_ff=512, dropout=0.0, activation='gelu', latent_dim=16,
-                 beta=1.0):
+                 beta=1.0, replay_size: int = 1000):
         super().__init__()
         self.win_size = win_size
         self.enc_in = enc_in
         self.beta = beta
+        self.replay_size = replay_size
 
         # Transformer components
         self.embedding = DataEmbedding(enc_in, d_model, dropout)
@@ -84,6 +85,8 @@ class AnomalyTransformerWithVAE(nn.Module):
         recon = self.decoder(z).view(x.size(0), self.win_size, self.enc_in)
 
         self.z_bank.append(z.detach())
+        if len(self.z_bank) > self.replay_size:
+            self.z_bank = self.z_bank[-self.replay_size:]
         self.last_mu = mu
         self.last_logvar = logvar
 

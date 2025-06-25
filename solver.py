@@ -68,6 +68,7 @@ class Solver(object):
         'model_type': 'transformer',
         'latent_dim': 16,
         'beta': 1.0,
+        'replay_size': 1000,
     }
 
     def __init__(self, config):
@@ -110,7 +111,8 @@ class Solver(object):
                 win_size=self.win_size,
                 enc_in=self.input_c,
                 latent_dim=getattr(self, 'latent_dim', 16),
-                beta=getattr(self, 'beta', 1.0))
+                beta=getattr(self, 'beta', 1.0),
+                replay_size=getattr(self, 'replay_size', 1000))
         else:
             self.model = AnomalyTransformer(
                 win_size=self.win_size,
