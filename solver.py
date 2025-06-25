@@ -333,7 +333,6 @@ class Solver(object):
             vali_loss1, vali_loss2 = self.vali(self.test_loader)
             f1 = self.compute_f1()
             self.history.append((self.update_count, vali_loss1, f1))
-            self.history.append((self.update_count, vali_loss1))
 
             print(
                 "Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} ".format(
