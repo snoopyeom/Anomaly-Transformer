@@ -24,6 +24,13 @@ bash ./scripts/SMAP.sh
 bash ./scripts/PSM.sh
 ```
 
+After training completes, you can evaluate the saved checkpoint with
+```bash
+python main.py --mode test [your args]
+```
+Use the same arguments as during training&mdash;especially the `--model_tag`
+option&mdash;so that the correct model is loaded for testing.
+
 Especially, we use the adjustment operation proposed by [Xu et al, 2018](https://arxiv.org/pdf/1802.03903.pdf) for model evaluation. If you have questions about this, please see this [issue](https://github.com/thuml/Anomaly-Transformer/issues/14) or email us.
 
 ## Main Result
