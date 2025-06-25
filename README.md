@@ -43,9 +43,10 @@ We compare our model with 15 baselines, including THOC, InterFusion, etc. **Gene
 
 ## Continual Experiment
 
-`incremental_experiment.py` now trains a single model on the full dataset while
-change point detection triggers replay of previously seen normal data. This
-dynamic approach uses the VAE branch to mitigate concept drift.
+`incremental_experiment.py` now trains a single model on the full dataset. When
+CPD (change-point detection) signals drift, previously generated normal samples
+are replayed together with the new data to update the model. This dynamic
+approach leverages the VAE branch to mitigate concept drift.
 
 ### Required arguments
 
