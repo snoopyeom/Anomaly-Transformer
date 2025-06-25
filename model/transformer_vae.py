@@ -92,7 +92,8 @@ class AnomalyTransformerWithVAE(nn.Module):
         z = mu + eps * std
         recon = self.decoder(z).view(x.size(0), self.win_size, self.enc_in)
 
-        self.z_bank.append(z.detach())
+        # store latent samples individually on the CPU for later replay
+        self.z_bank.extend(z.detach().cpu())
 
         if len(self.z_bank) > self.replay_size:
             self.z_bank = self.z_bank[-self.replay_size:]
