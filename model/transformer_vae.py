@@ -137,15 +137,17 @@ def detect_drift_with_ruptures(window: np.ndarray, pen: int = 20) -> bool:
 
 def train_model_with_replay(model: AnomalyTransformerWithVAE,
                             optimizer: torch.optim.Optimizer,
-                            current_data: torch.Tensor) -> float:
+                            current_data: torch.Tensor) -> tuple[float, bool]:
     model.train()
     data = current_data
+    drift_detected = False
     if rpt is not None:
         try:
             drift = detect_drift_with_ruptures(current_data.detach().cpu().numpy())
         except Exception:
             drift = False
         if drift:
+            drift_detected = True
             replay = model.generate_replay_samples(len(current_data))
             if replay is not None:
                 data = torch.cat([current_data, replay], dim=0)
@@ -154,4 +156,4 @@ def train_model_with_replay(model: AnomalyTransformerWithVAE,
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
-    return loss.item()
+    return loss.item(), drift_detected

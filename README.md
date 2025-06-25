@@ -57,11 +57,15 @@ approach leverages the VAE branch to mitigate concept drift.
 - `--output_c`: number of output channels.
 - `--batch_size`: training batch size (default `256`).
 - `--num_epochs`: training epochs (default `10`).
+- `--lr`: learning rate for the Adam optimizer (default `1e-4`).
+- `--k`: weighting factor for the association discrepancy losses (default `3`).
 - `--anomaly_ratio`: anomaly ratio in training set (default `1.0`).
 - `--model_save_path`: directory for checkpoints and results (default
   `checkpoints`).
 - `--model_type`: `transformer` or `transformer_vae` (default
   `transformer_vae`).
+
+After training, the script prints the number of updates triggered by CPD events.
 
 ### Example
 

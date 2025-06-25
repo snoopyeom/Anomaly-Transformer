@@ -7,9 +7,11 @@ from main import main as run_main
 
 
 def train_and_test(args: argparse.Namespace) -> None:
-    """주어진 설정으로 학습 후 평가를 수행한다."""
+    """Train and then evaluate, printing CPD update count."""
     args.mode = "train"
-    run_main(args)
+    solver = run_main(args)
+    if hasattr(solver, "update_count"):
+        print(f"Total CPD updates: {solver.update_count}")
     args.mode = "test"
     args.load_model = os.path.join(
         args.model_save_path, f"{args.model_tag}_checkpoint.pth")

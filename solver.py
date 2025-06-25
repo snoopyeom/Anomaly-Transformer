@@ -75,6 +75,8 @@ class Solver(object):
         self.train_start = getattr(self, 'train_start', 0.0)
         self.train_end = getattr(self, 'train_end', 1.0)
 
+        self.update_count = 0
+
         self.train_loader = get_loader_segment(self.data_path, batch_size=self.batch_size, win_size=self.win_size,
                                                mode='train',
                                                dataset=self.dataset,
@@ -180,8 +182,10 @@ class Solver(object):
                 input = input_data.float().to(self.device)
 
                 if getattr(self, 'model_type', 'transformer') == 'transformer_vae':
-                    loss = train_model_with_replay(self.model, self.optimizer, input)
+                    loss, updated = train_model_with_replay(self.model, self.optimizer, input)
                     loss1_list.append(loss)
+                    if updated:
+                        self.update_count += 1
                     if (i + 1) % 100 == 0:
                         speed = (time.time() - time_now) / iter_count
                         left_time = speed * ((self.num_epochs - epoch) * train_steps - i)
@@ -244,6 +248,9 @@ class Solver(object):
                 print("Early stopping")
                 break
             adjust_learning_rate(self.optimizer, epoch + 1, self.lr)
+
+        if getattr(self, 'model_type', 'transformer') == 'transformer_vae':
+            print(f"CPD triggered updates: {self.update_count}")
 
     def test(self):
         ckpt_path = self.load_model
