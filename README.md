@@ -66,6 +66,8 @@ approach leverages the VAE branch to mitigate concept drift.
   `transformer_vae`).
 
 After training, the script prints the number of updates triggered by CPD events.
+Install the `ruptures` package (e.g., via `pip install ruptures`) so that these
+change-point detection updates can occur.
 
 ### Example
 
@@ -76,6 +78,10 @@ python incremental_experiment.py \
 ```
 
 Training and evaluation artifacts are saved under `--model_save_path`.
+A figure named `update_performance.png` will visualize validation loss and F1
+score across the number of CPD-triggered updates.
+Metrics are recorded at the end of each epoch, so each point corresponds to the
+update count observed up to that epoch.
 
 ## Citation
 If you find this repo useful, please cite our paper.
