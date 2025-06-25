@@ -157,14 +157,14 @@ class Solver(object):
 
         return np.average(loss_1), np.average(loss_2)
 
-    def compute_f1(self):
-        """Evaluate F1 on the current model using the threshold loader."""
+    def compute_metrics(self):
+        """Evaluate F1 and ROC AUC on the current model using the threshold loader."""
         self.model.eval()
         try:
-            from sklearn.metrics import precision_recall_fscore_support, accuracy_score
+            from sklearn.metrics import precision_recall_fscore_support, accuracy_score, roc_auc_score
         except ImportError:
-            warnings.warn("scikit-learn is required to compute F1 score")
-            return float('nan')
+            warnings.warn("scikit-learn is required to compute metrics")
+            return float('nan'), float('nan')
 
         criterion = nn.MSELoss(reduce=False)
         temperature = 50
@@ -244,7 +244,8 @@ class Solver(object):
         accuracy = accuracy_score(gt, pred)
         precision, recall, f_score, _ = precision_recall_fscore_support(
             gt, pred, average='binary')
-        return f_score
+        auc = roc_auc_score(gt, attens_energy)
+        return f_score, auc
 
     def train(self):
 
@@ -331,12 +332,12 @@ class Solver(object):
             train_loss = np.average(loss1_list)
 
             vali_loss1, vali_loss2 = self.vali(self.test_loader)
-            f1 = self.compute_f1()
-            self.history.append((self.update_count, vali_loss1, f1))
+            f1, auc = self.compute_metrics()
+            self.history.append((self.update_count, f1, auc))
 
             print(
-                "Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} ".format(
-                    epoch + 1, train_steps, train_loss, vali_loss1))
+                "Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Val Loss: {3:.7f} F1: {4:.4f} AUC: {5:.4f}".format(
+                    epoch + 1, train_steps, train_loss, vali_loss1, f1, auc))
             early_stopping(vali_loss1, vali_loss2, self.model, path)
             if early_stopping.early_stop:
                 print("Early stopping")
@@ -346,49 +347,25 @@ class Solver(object):
         if getattr(self, 'model_type', 'transformer') == 'transformer_vae':
             print(f"CPD triggered updates: {self.update_count}")
             if self.history:
-                filtered = [h for h in self.history if len(h) == 3]
-                if filtered:
-                    counts, losses, f1s = zip(*filtered)
-                    fig, ax1 = plt.subplots()
-                    ax1.plot(counts, losses, marker='o', color='tab:blue', label='Val Loss')
-                    ax1.set_xlabel('CPD Updates')
-                    ax1.set_ylabel('Validation Loss', color='tab:blue')
-                    ax1.tick_params(axis='y', labelcolor='tab:blue')
-                    ax2 = ax1.twinx()
-                    ax2.plot(counts, f1s, marker='x', color='tab:orange', label='F1 Score')
-                    ax2.set_ylabel('F1 Score', color='tab:orange')
-                    ax2.tick_params(axis='y', labelcolor='tab:orange')
-                    ax1.grid(True)
-                    fig.tight_layout()
-                    plt.title('Performance vs CPD Updates')
-                    plt.savefig(os.path.join(path, 'update_performance.png'))
-                    plt.close(fig)
-                counts, losses, f1s = zip(*self.history)
-                fig, ax1 = plt.subplots()
-                ax1.plot(counts, losses, marker='o', color='tab:blue', label='Val Loss')
-                ax1.set_xlabel('CPD Updates')
-                ax1.set_ylabel('Validation Loss', color='tab:blue')
-                ax1.tick_params(axis='y', labelcolor='tab:blue')
-                ax2 = ax1.twinx()
-                ax2.plot(counts, f1s, marker='x', color='tab:orange', label='F1 Score')
-                ax2.set_ylabel('F1 Score', color='tab:orange')
-                ax2.tick_params(axis='y', labelcolor='tab:orange')
-                ax1.grid(True)
-                fig.tight_layout()
-                plt.title('Performance vs CPD Updates')
-                plt.savefig(os.path.join(path, 'update_performance.png'))
-                plt.close(fig)
-                counts, losses, f1s = zip(*self.history)
+                counts, f1s, aucs = zip(*self.history)
                 plt.figure()
-                plt.plot(counts, losses, marker='o', label='Val Loss')
-                plt.plot(counts, f1s, marker='x', label='F1 Score')
+                plt.plot(counts, f1s, marker='o')
                 plt.xlabel('CPD Updates')
-                plt.ylabel('Metric')
-                plt.title('Validation Loss and F1 vs CPD Updates')
-                plt.legend()
+                plt.ylabel('F1 Score')
+                plt.title('F1 Score over Updates')
                 plt.grid(True)
                 plt.tight_layout()
-                plt.savefig(os.path.join(path, 'update_performance.png'))
+                plt.savefig(os.path.join(path, 'f1_score.png'))
+                plt.close()
+
+                plt.figure()
+                plt.plot(counts, aucs, marker='x', color='tab:red')
+                plt.xlabel('CPD Updates')
+                plt.ylabel('ROC AUC')
+                plt.title('ROC AUC over Updates')
+                plt.grid(True)
+                plt.tight_layout()
+                plt.savefig(os.path.join(path, 'roc_auc.png'))
                 plt.close()
 
     def test(self):
@@ -551,13 +528,14 @@ class Solver(object):
         print("gt:   ", gt.shape)
 
         from sklearn.metrics import precision_recall_fscore_support
-        from sklearn.metrics import accuracy_score
+        from sklearn.metrics import accuracy_score, roc_auc_score
         accuracy = accuracy_score(gt, pred)
         precision, recall, f_score, support = precision_recall_fscore_support(gt, pred,
                                                                               average='binary')
+        auc = roc_auc_score(gt, test_energy)
         print(
-            "Accuracy : {:0.4f}, Precision : {:0.4f}, Recall : {:0.4f}, F-score : {:0.4f} ".format(
+            "Accuracy : {:0.4f}, Precision : {:0.4f}, Recall : {:0.4f}, F-score : {:0.4f}, AUC : {:0.4f} ".format(
                 accuracy, precision,
-                recall, f_score))
+                recall, f_score, auc))
 
-        return accuracy, precision, recall, f_score
+        return accuracy, precision, recall, f_score, auc
