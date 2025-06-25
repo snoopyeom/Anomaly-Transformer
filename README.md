@@ -34,13 +34,11 @@ We compare our model with 15 baselines, including THOC, InterFusion, etc. **Gene
 <img src=".\pics\result.png" height = "450" alt="" align=center />
 </p>
 
-## Incremental Experiment
+## Continual Experiment
 
-The `incremental_experiment.py` script runs a sequence of training phases where
-increasing portions of the dataset are used. After each phase it evaluates the
-model and finally plots the F1 score versus the fraction of training data.
-In addition to the incremental updates, baseline models are trained from scratch
-with the same fractions of data so that their performance can be compared.
+`incremental_experiment.py` now trains a single model on the full dataset while
+change point detection triggers replay of previously seen normal data. This
+dynamic approach uses the VAE branch to mitigate concept drift.
 
 ### Required arguments
 
@@ -50,10 +48,12 @@ with the same fractions of data so that their performance can be compared.
 - `--input_c`: number of input channels.
 - `--output_c`: number of output channels.
 - `--batch_size`: training batch size (default `256`).
-- `--num_epochs`: epochs for each training phase (default `10`).
+- `--num_epochs`: training epochs (default `10`).
 - `--anormly_ratio`: anomaly ratio in training set (default `1.0`).
-- `--model_save_path`: directory for checkpoints and results
-  (default `checkpoints`).
+- `--model_save_path`: directory for checkpoints and results (default
+  `checkpoints`).
+- `--model_type`: `transformer` or `transformer_vae` (default
+  `transformer_vae`).
 
 ### Example
 
@@ -63,9 +63,7 @@ python incremental_experiment.py \
     --input_c 38 --output_c 38
 ```
 
-The resulting plot `incremental_results.png` will be saved in
-`--model_save_path` and shows the F1 curves for both incremental and
-baseline training.
+Training and evaluation artifacts are saved under `--model_save_path`.
 
 ## Citation
 If you find this repo useful, please cite our paper.
