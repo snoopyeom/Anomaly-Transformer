@@ -82,8 +82,10 @@ A figure named `update_performance.png` will visualize validation loss and F1
 score across the number of CPD-triggered updates.
 Metrics are recorded at the end of each epoch, so each point corresponds to the
 update count observed up to that epoch.
+
 A figure named `update_performance.png` will visualize validation loss over the
 number of CPD-triggered updates.
+
 
 ## Citation
 If you find this repo useful, please cite our paper.

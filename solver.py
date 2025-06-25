@@ -9,6 +9,7 @@ from model.AnomalyTransformer import AnomalyTransformer
 from model.transformer_vae import AnomalyTransformerWithVAE, train_model_with_replay
 from data_factory.data_loader import get_loader_segment
 import matplotlib.pyplot as plt
+import warnings
 
 def adjust_learning_rate(optimizer, epoch, lr_):
     lr_adjust = {epoch: lr_ * (0.5 ** ((epoch - 1) // 1))}
@@ -159,6 +160,12 @@ class Solver(object):
     def compute_f1(self):
         """Evaluate F1 on the current model using the threshold loader."""
         self.model.eval()
+        try:
+            from sklearn.metrics import precision_recall_fscore_support, accuracy_score
+        except ImportError:
+            warnings.warn("scikit-learn is required to compute F1 score")
+            return float('nan')
+
         criterion = nn.MSELoss(reduce=False)
         temperature = 50
 
@@ -340,6 +347,23 @@ class Solver(object):
         if getattr(self, 'model_type', 'transformer') == 'transformer_vae':
             print(f"CPD triggered updates: {self.update_count}")
             if self.history:
+                filtered = [h for h in self.history if len(h) == 3]
+                if filtered:
+                    counts, losses, f1s = zip(*filtered)
+                    fig, ax1 = plt.subplots()
+                    ax1.plot(counts, losses, marker='o', color='tab:blue', label='Val Loss')
+                    ax1.set_xlabel('CPD Updates')
+                    ax1.set_ylabel('Validation Loss', color='tab:blue')
+                    ax1.tick_params(axis='y', labelcolor='tab:blue')
+                    ax2 = ax1.twinx()
+                    ax2.plot(counts, f1s, marker='x', color='tab:orange', label='F1 Score')
+                    ax2.set_ylabel('F1 Score', color='tab:orange')
+                    ax2.tick_params(axis='y', labelcolor='tab:orange')
+                    ax1.grid(True)
+                    fig.tight_layout()
+                    plt.title('Performance vs CPD Updates')
+                    plt.savefig(os.path.join(path, 'update_performance.png'))
+                    plt.close(fig)
                 counts, losses, f1s = zip(*self.history)
                 fig, ax1 = plt.subplots()
                 ax1.plot(counts, losses, marker='o', color='tab:blue', label='Val Loss')
