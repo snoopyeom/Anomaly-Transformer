@@ -26,7 +26,7 @@ def main():
     parser.add_argument('--output_c', type=int, required=True)
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--num_epochs', type=int, default=10)
-    parser.add_argument('--anormly_ratio', type=float, default=1.0)
+    parser.add_argument('--anomaly_ratio', type=float, default=1.0)
     parser.add_argument('--model_save_path', type=str, default='checkpoints')
 
     parser.add_argument(
