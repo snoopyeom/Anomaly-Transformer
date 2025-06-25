@@ -78,6 +78,8 @@ python incremental_experiment.py \
 ```
 
 Training and evaluation artifacts are saved under `--model_save_path`.
+A figure named `update_performance.png` will visualize validation loss over the
+number of CPD-triggered updates.
 
 ## Citation
 If you find this repo useful, please cite our paper.
