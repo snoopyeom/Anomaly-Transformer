@@ -333,6 +333,7 @@ class Solver(object):
             vali_loss1, vali_loss2 = self.vali(self.test_loader)
             f1 = self.compute_f1()
             self.history.append((self.update_count, vali_loss1, f1))
+            self.history.append((self.update_count, vali_loss1))
 
             print(
                 "Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} ".format(
@@ -363,6 +364,31 @@ class Solver(object):
                     plt.title('Performance vs CPD Updates')
                     plt.savefig(os.path.join(path, 'update_performance.png'))
                     plt.close(fig)
+                counts, losses, f1s = zip(*self.history)
+                fig, ax1 = plt.subplots()
+                ax1.plot(counts, losses, marker='o', color='tab:blue', label='Val Loss')
+                ax1.set_xlabel('CPD Updates')
+                ax1.set_ylabel('Validation Loss', color='tab:blue')
+                ax1.tick_params(axis='y', labelcolor='tab:blue')
+                ax2 = ax1.twinx()
+                ax2.plot(counts, f1s, marker='x', color='tab:orange', label='F1 Score')
+                ax2.set_ylabel('F1 Score', color='tab:orange')
+                ax2.tick_params(axis='y', labelcolor='tab:orange')
+                ax1.grid(True)
+                fig.tight_layout()
+                plt.title('Performance vs CPD Updates')
+                plt.savefig(os.path.join(path, 'update_performance.png'))
+                plt.close(fig)
+                counts, losses = zip(*self.history)
+                plt.figure()
+                plt.plot(counts, losses, marker='o')
+                plt.xlabel('CPD Updates')
+                plt.ylabel('Validation Loss')
+                plt.title('Validation Loss vs CPD Updates')
+                plt.grid(True)
+                plt.tight_layout()
+                plt.savefig(os.path.join(path, 'update_performance.png'))
+                plt.close()
 
     def test(self):
         ckpt_path = self.load_model
