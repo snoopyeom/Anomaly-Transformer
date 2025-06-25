@@ -8,6 +8,8 @@ from utils.utils import my_kl_loss
 from model.AnomalyTransformer import AnomalyTransformer
 from model.transformer_vae import AnomalyTransformerWithVAE, train_model_with_replay
 from data_factory.data_loader import get_loader_segment
+import matplotlib.pyplot as plt
+import warnings
 
 def adjust_learning_rate(optimizer, epoch, lr_):
     lr_adjust = {epoch: lr_ * (0.5 ** ((epoch - 1) // 1))}
@@ -155,6 +157,95 @@ class Solver(object):
 
         return np.average(loss_1), np.average(loss_2)
 
+    def compute_f1(self):
+        """Evaluate F1 on the current model using the threshold loader."""
+        self.model.eval()
+        try:
+            from sklearn.metrics import precision_recall_fscore_support, accuracy_score
+        except ImportError:
+            warnings.warn("scikit-learn is required to compute F1 score")
+            return float('nan')
+
+        criterion = nn.MSELoss(reduce=False)
+        temperature = 50
+
+        # energies on train set
+        attens_energy = []
+        for i, (input_data, labels) in enumerate(self.train_loader):
+            input = input_data.float().to(self.device)
+            output, series, prior, _ = self.model(input)
+            loss = torch.mean(criterion(input, output), dim=-1)
+            series_loss = 0.0
+            prior_loss = 0.0
+            for u in range(len(prior)):
+                if u == 0:
+                    series_loss = my_kl_loss(series[u],
+                            (prior[u] / torch.unsqueeze(torch.sum(prior[u], dim=-1), dim=-1)
+                             .repeat(1, 1, 1, self.win_size)).detach()) * temperature
+                    prior_loss = my_kl_loss(
+                        (prior[u] / torch.unsqueeze(torch.sum(prior[u], dim=-1), dim=-1)
+                         .repeat(1, 1, 1, self.win_size)),
+                        series[u].detach()) * temperature
+                else:
+                    series_loss += my_kl_loss(series[u],
+                            (prior[u] / torch.unsqueeze(torch.sum(prior[u], dim=-1), dim=-1)
+                             .repeat(1, 1, 1, self.win_size)).detach()) * temperature
+                    prior_loss += my_kl_loss(
+                        (prior[u] / torch.unsqueeze(torch.sum(prior[u], dim=-1), dim=-1)
+                         .repeat(1, 1, 1, self.win_size)),
+                        series[u].detach()) * temperature
+            metric = torch.softmax((-series_loss - prior_loss), dim=-1)
+            cri = metric * loss
+            cri = cri.detach().cpu().numpy()
+            attens_energy.append(cri)
+        train_energy = np.concatenate(attens_energy, axis=0).reshape(-1)
+
+        # energies on threshold loader
+        attens_energy = []
+        test_labels = []
+        for i, (input_data, labels) in enumerate(self.thre_loader):
+            input = input_data.float().to(self.device)
+            output, series, prior, _ = self.model(input)
+            loss = torch.mean(criterion(input, output), dim=-1)
+            series_loss = 0.0
+            prior_loss = 0.0
+            for u in range(len(prior)):
+                if u == 0:
+                    series_loss = my_kl_loss(series[u],
+                            (prior[u] / torch.unsqueeze(torch.sum(prior[u], dim=-1), dim=-1)
+                             .repeat(1, 1, 1, self.win_size)).detach()) * temperature
+                    prior_loss = my_kl_loss(
+                        (prior[u] / torch.unsqueeze(torch.sum(prior[u], dim=-1), dim=-1)
+                         .repeat(1, 1, 1, self.win_size)),
+                        series[u].detach()) * temperature
+                else:
+                    series_loss += my_kl_loss(series[u],
+                            (prior[u] / torch.unsqueeze(torch.sum(prior[u], dim=-1), dim=-1)
+                             .repeat(1, 1, 1, self.win_size)).detach()) * temperature
+                    prior_loss += my_kl_loss(
+                        (prior[u] / torch.unsqueeze(torch.sum(prior[u], dim=-1), dim=-1)
+                         .repeat(1, 1, 1, self.win_size)),
+                        series[u].detach()) * temperature
+            metric = torch.softmax((-series_loss - prior_loss), dim=-1)
+            cri = metric * loss
+            cri = cri.detach().cpu().numpy()
+            attens_energy.append(cri)
+            test_labels.append(labels)
+
+        attens_energy = np.concatenate(attens_energy, axis=0).reshape(-1)
+        test_labels = np.concatenate(test_labels, axis=0).reshape(-1)
+        combined_energy = np.concatenate([train_energy, attens_energy], axis=0)
+        thresh = np.percentile(combined_energy, 100 - self.anomaly_ratio)
+        pred = (attens_energy > thresh).astype(int)
+        gt = test_labels.astype(int)
+
+        from sklearn.metrics import precision_recall_fscore_support
+        from sklearn.metrics import accuracy_score
+        accuracy = accuracy_score(gt, pred)
+        precision, recall, f_score, _ = precision_recall_fscore_support(
+            gt, pred, average='binary')
+        return f_score
+
     def train(self):
 
         print("======================TRAIN MODE======================")
@@ -165,6 +256,7 @@ class Solver(object):
             os.makedirs(path)
         early_stopping = EarlyStopping(patience=3, verbose=True, dataset_name=self.model_tag)
         train_steps = len(self.train_loader)
+        self.history = []
 
         if self.load_model is not None and os.path.isfile(self.load_model):
             self.model.load_state_dict(torch.load(self.load_model))
@@ -239,6 +331,8 @@ class Solver(object):
             train_loss = np.average(loss1_list)
 
             vali_loss1, vali_loss2 = self.vali(self.test_loader)
+            f1 = self.compute_f1()
+            self.history.append((self.update_count, vali_loss1, f1))
 
             print(
                 "Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} ".format(
@@ -251,6 +345,24 @@ class Solver(object):
 
         if getattr(self, 'model_type', 'transformer') == 'transformer_vae':
             print(f"CPD triggered updates: {self.update_count}")
+            if self.history:
+                filtered = [h for h in self.history if len(h) == 3]
+                if filtered:
+                    counts, losses, f1s = zip(*filtered)
+                    fig, ax1 = plt.subplots()
+                    ax1.plot(counts, losses, marker='o', color='tab:blue', label='Val Loss')
+                    ax1.set_xlabel('CPD Updates')
+                    ax1.set_ylabel('Validation Loss', color='tab:blue')
+                    ax1.tick_params(axis='y', labelcolor='tab:blue')
+                    ax2 = ax1.twinx()
+                    ax2.plot(counts, f1s, marker='x', color='tab:orange', label='F1 Score')
+                    ax2.set_ylabel('F1 Score', color='tab:orange')
+                    ax2.tick_params(axis='y', labelcolor='tab:orange')
+                    ax1.grid(True)
+                    fig.tight_layout()
+                    plt.title('Performance vs CPD Updates')
+                    plt.savefig(os.path.join(path, 'update_performance.png'))
+                    plt.close(fig)
 
     def test(self):
         ckpt_path = self.load_model
