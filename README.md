@@ -100,6 +100,9 @@ qualitatively inspecting continual learning behavior.
   draws change points detected by `ruptures` on top of a sequence so that you
   can confirm whether CPD corresponds to actual distribution shifts.
 
+Directories in the provided `save_path` are created automatically, so you can
+use paths such as `outputs/z_bank_tsne.png` without pre-creating the folder.
+
 
 ## Citation
 If you find this repo useful, please cite our paper.

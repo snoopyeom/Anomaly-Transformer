@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
@@ -59,6 +60,7 @@ def plot_z_bank_tsne(model, loader, n_samples=500, save_path="z_bank_tsne.png"):
     plt.title("t-SNE of Latent Vectors")
     plt.legend()
     plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path) or '.', exist_ok=True)
     plt.savefig(save_path)
     plt.close()
 
@@ -96,5 +98,6 @@ def visualize_cpd_detection(series, penalty=20, save_path="cpd_detection.png"):
     plt.xlabel("Time")
     plt.title("Change Point Detection")
     plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path) or '.', exist_ok=True)
     plt.savefig(save_path)
     plt.close()
