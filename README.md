@@ -87,6 +87,30 @@ update count observed up to that epoch.
 F1 Score와 ROC AUC가 CPD 업데이트 횟수에 따라 그래프로 저장되며,
 각각 `f1_score.png`와 `roc_auc.png` 파일에서 확인할 수 있습니다.
 
+## Visualization Utilities
+
+The new module `utils/analysis_tools.py` provides helper functions for
+qualitatively inspecting continual learning behavior.
+
+- `plot_z_bank_tsne(model, loader, n_samples=500, save_path="z_bank_tsne.png")`
+  projects latent vectors from the model's `z_bank` and from the provided
+  dataset loader using **t-SNE**.
+- `plot_z_bank_pca(model, loader, n_samples=500, save_path="z_bank_pca.png")`
+  performs the same comparison with **PCA**, and `plot_z_bank_umap` relies on
+  **UMAP** if available. Each helper saves a scatter plot contrasting original
+  and replayed vectors.
+- `visualize_cpd_detection(series, penalty=None, min_size=30, save_path="cpd_detection.png")`
+  draws change points detected by `ruptures`. When `penalty` is ``None`` a
+  heuristic based on series length is used, and `min_size` enforces a minimum
+  gap between change points so the plot remains readable.
+
+Directories in the provided `save_path` are created automatically, so you can
+use paths such as `outputs/z_bank_tsne.png` without pre-creating the folder.
+
+When using the VAE-based model (`--model_type transformer_vae`), these
+visualizations are generated automatically at the end of training and saved
+alongside the metric plots.
+
 
 ## Citation
 If you find this repo useful, please cite our paper.
