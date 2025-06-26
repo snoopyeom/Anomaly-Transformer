@@ -11,9 +11,6 @@ except ImportError:  # umap-learn might not be installed
     umap = None
 
 try:
-import torch
-
-try:
     import ruptures as rpt
 except ImportError:  # ruptures might not be installed
     rpt = None
@@ -21,20 +18,6 @@ except ImportError:  # ruptures might not be installed
 
 def _collect_latents(model, loader, n_samples):
     """Return original and replay latent vectors."""
-def plot_z_bank_tsne(model, loader, n_samples=500, save_path="z_bank_tsne.png"):
-    """Visualize latent vectors stored in ``z_bank`` with t-SNE.
-
-    Parameters
-    ----------
-    model : AnomalyTransformerWithVAE
-        Trained model that keeps previous latent samples.
-    loader : torch.utils.data.DataLoader
-        Loader providing original time series windows.
-    n_samples : int, optional
-        Number of samples drawn from each source, by default 500.
-    save_path : str, optional
-        Where to save the resulting plot.
-    """
     device = next(model.parameters()).device
     orig_latents = []
     seen = 0
@@ -62,10 +45,6 @@ def plot_z_bank_tsne(model, loader, n_samples=500, save_path="z_bank_tsne.png"):
 
 
 def _scatter_projection(orig_latents, replay_latents, reduced, title, save_path):
-    combined = np.concatenate([orig_latents, replay_latents], axis=0)
-    tsne = TSNE(n_components=2, random_state=0)
-    reduced = tsne.fit_transform(combined)
-
     count_orig = orig_latents.shape[0]
     plt.figure()
     plt.scatter(reduced[:count_orig, 0], reduced[:count_orig, 1], s=10, label="Original")
@@ -73,7 +52,6 @@ def _scatter_projection(orig_latents, replay_latents, reduced, title, save_path)
     plt.xlabel("Dim 1")
     plt.ylabel("Dim 2")
     plt.title(title)
-    plt.title("t-SNE of Latent Vectors")
     plt.legend()
     plt.tight_layout()
     os.makedirs(os.path.dirname(save_path) or '.', exist_ok=True)
@@ -109,7 +87,6 @@ def plot_z_bank_umap(model, loader, n_samples=500, save_path="z_bank_umap.png"):
 
 
 def visualize_cpd_detection(series, penalty=None, min_size=30, save_path="cpd_detection.png"):
-def visualize_cpd_detection(series, penalty=20, save_path="cpd_detection.png"):
     """Plot change-point locations predicted by ``ruptures``.
 
     Parameters
@@ -121,8 +98,6 @@ def visualize_cpd_detection(series, penalty=20, save_path="cpd_detection.png"):
         on sequence length and variance is used.
     min_size : int, optional
         Minimum distance between change points, defaults to ``30``.
-    penalty : int, optional
-        Penalty value used by ``ruptures.Pelt``, by default ``20``.
     save_path : str, optional
         Path to save the visualization.
     """
@@ -141,7 +116,6 @@ def visualize_cpd_detection(series, penalty=20, save_path="cpd_detection.png"):
         penalty = np.log(len(data)) * np.var(data)
 
     algo = rpt.Pelt(model="l2", min_size=min_size).fit(data)
-    algo = rpt.Pelt(model="l2").fit(data)
     result = algo.predict(pen=penalty)
 
     plt.figure()
