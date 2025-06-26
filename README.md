@@ -94,6 +94,15 @@ qualitatively inspecting continual learning behavior.
 
 - `plot_z_bank_tsne(model, loader, n_samples=500, save_path="z_bank_tsne.png")`
   projects latent vectors from the model's `z_bank` and from the provided
+  dataset loader using **t-SNE**.
+- `plot_z_bank_pca(model, loader, n_samples=500, save_path="z_bank_pca.png")`
+  performs the same comparison with **PCA**, and `plot_z_bank_umap` relies on
+  **UMAP** if available. Each helper saves a scatter plot contrasting original
+  and replayed vectors.
+- `visualize_cpd_detection(series, penalty=None, min_size=30, save_path="cpd_detection.png")`
+  draws change points detected by `ruptures`. When `penalty` is ``None`` a
+  heuristic based on series length is used, and `min_size` enforces a minimum
+  gap between change points so the plot remains readable.
   dataset loader using t-SNE, saving a scatter plot that compares their
   distributions.
 - `visualize_cpd_detection(series, penalty=20, save_path="cpd_detection.png")`

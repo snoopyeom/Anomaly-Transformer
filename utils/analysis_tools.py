@@ -2,6 +2,15 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA
+import torch
+
+try:
+    import umap
+except ImportError:  # umap-learn might not be installed
+    umap = None
+
+try:
 import torch
 
 try:
@@ -10,6 +19,8 @@ except ImportError:  # ruptures might not be installed
     rpt = None
 
 
+def _collect_latents(model, loader, n_samples):
+    """Return original and replay latent vectors."""
 def plot_z_bank_tsne(model, loader, n_samples=500, save_path="z_bank_tsne.png"):
     """Visualize latent vectors stored in ``z_bank`` with t-SNE.
 
@@ -47,6 +58,10 @@ def plot_z_bank_tsne(model, loader, n_samples=500, save_path="z_bank_tsne.png"):
     replay_latents = torch.stack(model.z_bank).cpu().numpy()
     replay_latents = replay_latents[-n_samples:]
 
+    return orig_latents, replay_latents
+
+
+def _scatter_projection(orig_latents, replay_latents, reduced, title, save_path):
     combined = np.concatenate([orig_latents, replay_latents], axis=0)
     tsne = TSNE(n_components=2, random_state=0)
     reduced = tsne.fit_transform(combined)
@@ -57,6 +72,7 @@ def plot_z_bank_tsne(model, loader, n_samples=500, save_path="z_bank_tsne.png"):
     plt.scatter(reduced[count_orig:, 0], reduced[count_orig:, 1], s=10, label="Replay", alpha=0.7)
     plt.xlabel("Dim 1")
     plt.ylabel("Dim 2")
+    plt.title(title)
     plt.title("t-SNE of Latent Vectors")
     plt.legend()
     plt.tight_layout()
@@ -65,6 +81,34 @@ def plot_z_bank_tsne(model, loader, n_samples=500, save_path="z_bank_tsne.png"):
     plt.close()
 
 
+def plot_z_bank_tsne(model, loader, n_samples=500, save_path="z_bank_tsne.png"):
+    """Visualize latent vectors stored in ``z_bank`` with t-SNE."""
+    orig_latents, replay_latents = _collect_latents(model, loader, n_samples)
+    combined = np.concatenate([orig_latents, replay_latents], axis=0)
+    reduced = TSNE(n_components=2, random_state=0).fit_transform(combined)
+    _scatter_projection(orig_latents, replay_latents, reduced, "t-SNE of Latent Vectors", save_path)
+
+
+def plot_z_bank_pca(model, loader, n_samples=500, save_path="z_bank_pca.png"):
+    """Visualize latent vectors stored in ``z_bank`` with PCA."""
+    orig_latents, replay_latents = _collect_latents(model, loader, n_samples)
+    combined = np.concatenate([orig_latents, replay_latents], axis=0)
+    reduced = PCA(n_components=2).fit_transform(combined)
+    _scatter_projection(orig_latents, replay_latents, reduced, "PCA of Latent Vectors", save_path)
+
+
+def plot_z_bank_umap(model, loader, n_samples=500, save_path="z_bank_umap.png"):
+    """Visualize latent vectors stored in ``z_bank`` with UMAP."""
+    if umap is None:
+        raise ImportError("umap-learn is required for UMAP visualization")
+    orig_latents, replay_latents = _collect_latents(model, loader, n_samples)
+    combined = np.concatenate([orig_latents, replay_latents], axis=0)
+    reducer = umap.UMAP(n_components=2, random_state=0)
+    reduced = reducer.fit_transform(combined)
+    _scatter_projection(orig_latents, replay_latents, reduced, "UMAP of Latent Vectors", save_path)
+
+
+def visualize_cpd_detection(series, penalty=None, min_size=30, save_path="cpd_detection.png"):
 def visualize_cpd_detection(series, penalty=20, save_path="cpd_detection.png"):
     """Plot change-point locations predicted by ``ruptures``.
 
@@ -72,6 +116,11 @@ def visualize_cpd_detection(series, penalty=20, save_path="cpd_detection.png"):
     ----------
     series : np.ndarray
         Sequence with shape ``(time, features)`` or ``(time,)``.
+    penalty : float, optional
+        Penalty passed to ``rpt.Pelt.predict``. If ``None`` a heuristic based
+        on sequence length and variance is used.
+    min_size : int, optional
+        Minimum distance between change points, defaults to ``30``.
     penalty : int, optional
         Penalty value used by ``ruptures.Pelt``, by default ``20``.
     save_path : str, optional
@@ -88,6 +137,10 @@ def visualize_cpd_detection(series, penalty=20, save_path="cpd_detection.png"):
         data = series.reshape(series.shape[0], -1)
         plot_target = series[:, 0]
 
+    if penalty is None:
+        penalty = np.log(len(data)) * np.var(data)
+
+    algo = rpt.Pelt(model="l2", min_size=min_size).fit(data)
     algo = rpt.Pelt(model="l2").fit(data)
     result = algo.predict(pen=penalty)
 
