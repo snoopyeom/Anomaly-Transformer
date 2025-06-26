@@ -78,13 +78,10 @@ python incremental_experiment.py \
 ```
 
 Training and evaluation artifacts are saved under `--model_save_path`.
-A figure named `update_performance.png` will visualize validation loss and F1
-score across the number of CPD-triggered updates.
 Metrics are recorded at the end of each epoch, so each point corresponds to the
 update count observed up to that epoch.
-
-A figure named `update_performance.png` will visualize validation loss over the
-number of CPD-triggered updates.
+F1 Score와 ROC AUC가 CPD 업데이트 횟수에 따라 그래프로 저장되며,
+각각 `f1_score.png`와 `roc_auc.png` 파일에서 확인할 수 있습니다.
 
 
 ## Citation
