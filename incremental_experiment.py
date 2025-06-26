@@ -44,6 +44,8 @@ def main():
     parser.add_argument('--k', type=int, default=3)
     parser.add_argument('--anomaly_ratio', type=float, default=1.0)
     parser.add_argument('--model_save_path', type=str, default='checkpoints')
+    parser.add_argument('--min_cpd_gap', type=int, default=30,
+                        help='minimum gap between CPD change points')
 
     parser.add_argument(
         '--model_type',
@@ -53,6 +55,7 @@ def main():
         help='VAE 브랜치를 사용하려면 transformer_vae 선택')
     parser.add_argument('--latent_dim', type=int, default=16)
     parser.add_argument('--beta', type=float, default=1.0)
+    parser.add_argument('--replay_horizon', type=int, default=None)
     parser.add_argument('--model_tag', type=str, default='dynamic')
     parser.add_argument(
         '--cpd_penalty',

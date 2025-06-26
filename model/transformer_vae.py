@@ -9,7 +9,7 @@ from .AnomalyTransformer import EncoderLayer, Encoder
 from .attn import AnomalyAttention, AttentionLayer
 from .embed import DataEmbedding
 
-from utils.utils import my_kl_loss
+from utils.utils import my_kl_loss, filter_short_segments
 
 
 try:
@@ -29,7 +29,8 @@ class AnomalyTransformerWithVAE(nn.Module):
 
     def __init__(self, win_size, enc_in, d_model=512, n_heads=8, e_layers=3,
                  d_ff=512, dropout=0.0, activation='gelu', latent_dim=16,
-                 beta: float = 1.0, replay_size: int = 1000):
+                 beta: float = 1.0, replay_size: int = 1000,
+                 replay_horizon: int | None = None):
 
         super().__init__()
         self.win_size = win_size
@@ -37,6 +38,8 @@ class AnomalyTransformerWithVAE(nn.Module):
         self.beta = beta
 
         self.replay_size = replay_size
+        self.replay_horizon = replay_horizon
+        self.current_step = 0
 
 
         # Transformer components
@@ -67,9 +70,18 @@ class AnomalyTransformerWithVAE(nn.Module):
             nn.Linear(d_model, win_size * enc_in)
         )
 
+        # store tuples of (latent_vector, step) for experience replay
         self.z_bank = []
         self.last_mu = None
         self.last_logvar = None
+
+    def _purge_z_bank(self) -> None:
+        """Remove stale latent vectors based on ``replay_horizon`` and size."""
+        if self.replay_horizon is not None:
+            threshold = self.current_step - self.replay_horizon
+            self.z_bank = [item for item in self.z_bank if item[1] > threshold]
+        if len(self.z_bank) > self.replay_size:
+            self.z_bank = self.z_bank[-self.replay_size:]
 
     def compute_attention_discrepancy(self, series, prior):
         total = 0.0
@@ -92,11 +104,10 @@ class AnomalyTransformerWithVAE(nn.Module):
         z = mu + eps * std
         recon = self.decoder(z).view(x.size(0), self.win_size, self.enc_in)
 
-        # store latent samples individually on the CPU for later replay
-        self.z_bank.extend(z.detach().cpu())
-
-        if len(self.z_bank) > self.replay_size:
-            self.z_bank = self.z_bank[-self.replay_size:]
+        # advance time step and store latent samples for later replay
+        self.current_step += 1
+        self.z_bank.extend((vec.detach().cpu(), self.current_step) for vec in z)
+        self._purge_z_bank()
 
         self.last_mu = mu
         self.last_logvar = logvar
@@ -119,17 +130,19 @@ class AnomalyTransformerWithVAE(nn.Module):
         return torch.mean(kl)
 
     def generate_replay_samples(self, n):
+        """Generate reconstructions from stored latent vectors."""
+        self._purge_z_bank()
         if len(self.z_bank) == 0:
             return None
         idx = np.random.choice(len(self.z_bank), size=min(n, len(self.z_bank)), replace=False)
-        z = torch.stack([self.z_bank[i] for i in idx])
+        z = torch.stack([self.z_bank[i][0] for i in idx])
         z = z.to(next(self.parameters()).device)
         with torch.no_grad():
             recon = self.decoder(z).view(len(idx), self.win_size, self.enc_in)
         return recon
 
 
-def detect_drift_with_ruptures(window: np.ndarray, pen: int = 20) -> bool:
+def detect_drift_with_ruptures(window: np.ndarray, pen: int = 20, min_gap: int = 30) -> bool:
     if rpt is None:
         raise ImportError("ruptures is required for drift detection")
     # accept batches in (batch, seq_len, features) form
@@ -137,6 +150,7 @@ def detect_drift_with_ruptures(window: np.ndarray, pen: int = 20) -> bool:
         window = window.reshape(window.shape[0], -1)
     algo = rpt.Pelt(model="l2").fit(window)
     result = algo.predict(pen=pen)
+    result = filter_short_segments(result, min_gap)
     return len(result) > 1
 
 
@@ -146,6 +160,10 @@ def train_model_with_replay(
     current_data: torch.Tensor,
     cpd_penalty: int = 20,
 ) -> tuple[float, bool]:
+def train_model_with_replay(model: AnomalyTransformerWithVAE,
+                            optimizer: torch.optim.Optimizer,
+                            current_data: torch.Tensor,
+                            min_gap: int = 30) -> tuple[float, bool]:
     model.train()
     data = current_data
     drift_detected = False
@@ -154,6 +172,7 @@ def train_model_with_replay(
             drift = detect_drift_with_ruptures(
                 current_data.detach().cpu().numpy(), pen=cpd_penalty
             )
+                current_data.detach().cpu().numpy(), min_gap=min_gap)
         except Exception:
             warnings.warn("Change point detection failed; proceeding without replay")
             drift = False

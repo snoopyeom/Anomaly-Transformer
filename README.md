@@ -66,6 +66,10 @@ approach leverages the VAE branch to mitigate concept drift.
   `transformer_vae`).
 - `--cpd_penalty`: penalty used by `ruptures` for change point detection
   (default `20`). A larger value results in fewer detected drifts.
+- `--replay_horizon`: keep latent vectors for at most this many training
+  steps when using the VAE model (default `None`).
+- `--min_cpd_gap`: minimum separation between detected change points (default
+  `30`).
 
 After training, the script prints the number of updates triggered by CPD events.
 Install the `ruptures` package (e.g., via `pip install ruptures`) so that these

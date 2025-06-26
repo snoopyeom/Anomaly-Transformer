@@ -74,8 +74,10 @@ class Solver(object):
         'latent_dim': 16,
         'beta': 1.0,
         'replay_size': 1000,
+        'replay_horizon': None,
         'anomaly_ratio': 1.0,
         'cpd_penalty': 20,
+        'min_cpd_gap': 30,
     }
 
     def __init__(self, config):
@@ -121,7 +123,8 @@ class Solver(object):
                 enc_in=self.input_c,
                 latent_dim=getattr(self, 'latent_dim', 16),
                 beta=getattr(self, 'beta', 1.0),
-                replay_size=getattr(self, 'replay_size', 1000))
+                replay_size=getattr(self, 'replay_size', 1000),
+                replay_horizon=getattr(self, 'replay_horizon', None))
         else:
             self.model = AnomalyTransformer(
                 win_size=self.win_size,
@@ -316,6 +319,7 @@ class Solver(object):
                         input,
                         cpd_penalty=getattr(self, 'cpd_penalty', 20),
                     )
+                        self.model, self.optimizer, input, self.min_cpd_gap)
                     loss1_list.append(loss)
                     if updated:
                         self.update_count += 1

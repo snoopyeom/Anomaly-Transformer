@@ -42,6 +42,7 @@ if __name__ == '__main__':
                         choices=['transformer', 'transformer_vae'])
     parser.add_argument('--latent_dim', type=int, default=16)
     parser.add_argument('--beta', type=float, default=1.0)
+    parser.add_argument('--replay_horizon', type=int, default=None)
     parser.add_argument('--model_tag', type=str, default=None)
     parser.add_argument('--dataset', type=str, default='credit')
     parser.add_argument('--mode', type=str, default='train', choices=['train', 'test'])
@@ -54,6 +55,8 @@ if __name__ == '__main__':
         default=20,
         help='Penalty value for ruptures change point detection',
     )
+    parser.add_argument('--min_cpd_gap', type=int, default=30,
+                        help='minimum gap between CPD change points')
 
     config = parser.parse_args()
     if config.model_tag is None:
