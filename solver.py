@@ -6,8 +6,12 @@ import os
 import time
 from utils.utils import my_kl_loss
 from model.AnomalyTransformer import AnomalyTransformer
-from model.transformer_vae import AnomalyTransformerWithVAE, train_model_with_replay
+from model.transformer_vae import (
+    AnomalyTransformerWithVAE,
+    train_model_with_replay,
+)
 from data_factory.data_loader import get_loader_segment
+from utils.analysis_tools import plot_z_bank_tsne, visualize_cpd_detection
 import matplotlib.pyplot as plt
 import warnings
 
@@ -392,6 +396,20 @@ class Solver(object):
                 plt.tight_layout()
                 plt.savefig(os.path.join(path, 'roc_auc.png'))
                 plt.close()
+
+                # additional diagnostics
+                try:
+                    tsne_path = os.path.join(path, 'z_bank_tsne.png')
+                    plot_z_bank_tsne(self.model, self.train_loader, save_path=tsne_path)
+                except Exception as e:
+                    warnings.warn(f"Failed to create t-SNE plot: {e}")
+
+                try:
+                    series = self.vali_loader.dataset.val[:, 0]
+                    cpd_path = os.path.join(path, 'cpd_detection.png')
+                    visualize_cpd_detection(series, save_path=cpd_path)
+                except Exception as e:
+                    warnings.warn(f"Failed to visualize CPD: {e}")
 
     def test(self):
         ckpt_path = self.load_model
