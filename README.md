@@ -64,10 +64,13 @@ approach leverages the VAE branch to mitigate concept drift.
   `checkpoints`).
 - `--model_type`: `transformer` or `transformer_vae` (default
   `transformer_vae`).
+- `--cpd_penalty`: penalty used by `ruptures` for change point detection
+  (default `20`). A larger value results in fewer detected drifts.
 
 After training, the script prints the number of updates triggered by CPD events.
 Install the `ruptures` package (e.g., via `pip install ruptures`) so that these
-change-point detection updates can occur.
+change-point detection updates can occur. The `--cpd_penalty` argument controls
+the sensitivity of this detection.
 
 ### Example
 
@@ -76,6 +79,9 @@ python incremental_experiment.py \
     --dataset SMD --data_path dataset/SMD \
     --input_c 38 --output_c 38
 ```
+
+Use `--cpd_penalty` to tune how aggressively change points are detected. Larger
+values, such as `--cpd_penalty 40`, will trigger fewer updates.
 
 Training and evaluation artifacts are saved under `--model_save_path`.
 Two figures, `f1_score.png` and `roc_auc.png`, visualize F1 score and ROC AUC

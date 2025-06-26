@@ -75,6 +75,7 @@ class Solver(object):
         'beta': 1.0,
         'replay_size': 1000,
         'anomaly_ratio': 1.0,
+        'cpd_penalty': 20,
     }
 
     def __init__(self, config):
@@ -309,7 +310,12 @@ class Solver(object):
                 input = input_data.float().to(self.device)
 
                 if getattr(self, 'model_type', 'transformer') == 'transformer_vae':
-                    loss, updated = train_model_with_replay(self.model, self.optimizer, input)
+                    loss, updated = train_model_with_replay(
+                        self.model,
+                        self.optimizer,
+                        input,
+                        cpd_penalty=getattr(self, 'cpd_penalty', 20),
+                    )
                     loss1_list.append(loss)
                     if updated:
                         self.update_count += 1
