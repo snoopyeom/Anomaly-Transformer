@@ -161,7 +161,7 @@ class Solver(object):
         """Evaluate F1 and ROC AUC on the current model using the threshold loader."""
         self.model.eval()
         try:
-            from sklearn.metrics import precision_recall_fscore_support, accuracy_score, roc_auc_score
+            from sklearn.metrics import precision_recall_fscore_support, roc_auc_score
         except ImportError:
             warnings.warn("scikit-learn is required to compute metrics")
             return float('nan'), float('nan')
@@ -240,8 +240,33 @@ class Solver(object):
         gt = test_labels.astype(int)
 
         from sklearn.metrics import precision_recall_fscore_support
-        from sklearn.metrics import accuracy_score
-        accuracy = accuracy_score(gt, pred)
+        # detection adjustment: please see this issue for more information
+        # https://github.com/thuml/Anomaly-Transformer/issues/14
+        pred = list(pred)
+        anomaly_state = False
+        for i in range(len(gt)):
+            if gt[i] == 1 and pred[i] == 1 and not anomaly_state:
+                anomaly_state = True
+                for j in range(i, 0, -1):
+                    if gt[j] == 0:
+                        break
+                    else:
+                        if pred[j] == 0:
+                            pred[j] = 1
+                for j in range(i, len(gt)):
+                    if gt[j] == 0:
+                        break
+                    else:
+                        if pred[j] == 0:
+                            pred[j] = 1
+            elif gt[i] == 0:
+                anomaly_state = False
+            if anomaly_state:
+                pred[i] = 1
+
+        pred = np.array(pred)
+        gt = np.array(gt)
+
         precision, recall, f_score, _ = precision_recall_fscore_support(
             gt, pred, average='binary')
         auc = roc_auc_score(gt, attens_energy)
