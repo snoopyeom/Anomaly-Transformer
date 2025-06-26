@@ -76,6 +76,7 @@ class Solver(object):
         'replay_size': 1000,
         'replay_horizon': None,
         'anomaly_ratio': 1.0,
+        'min_cpd_gap': 30,
     }
 
     def __init__(self, config):
@@ -311,7 +312,8 @@ class Solver(object):
                 input = input_data.float().to(self.device)
 
                 if getattr(self, 'model_type', 'transformer') == 'transformer_vae':
-                    loss, updated = train_model_with_replay(self.model, self.optimizer, input)
+                    loss, updated = train_model_with_replay(
+                        self.model, self.optimizer, input, self.min_cpd_gap)
                     loss1_list.append(loss)
                     if updated:
                         self.update_count += 1
