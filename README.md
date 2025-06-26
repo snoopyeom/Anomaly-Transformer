@@ -103,6 +103,10 @@ qualitatively inspecting continual learning behavior.
 Directories in the provided `save_path` are created automatically, so you can
 use paths such as `outputs/z_bank_tsne.png` without pre-creating the folder.
 
+When using the VAE-based model (`--model_type transformer_vae`), these
+visualizations are generated automatically at the end of training and saved
+alongside the metric plots.
+
 
 ## Citation
 If you find this repo useful, please cite our paper.
