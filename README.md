@@ -103,6 +103,11 @@ qualitatively inspecting continual learning behavior.
   draws change points detected by `ruptures`. When `penalty` is ``None`` a
   heuristic based on series length is used, and `min_size` enforces a minimum
   gap between change points so the plot remains readable.
+  dataset loader using t-SNE, saving a scatter plot that compares their
+  distributions.
+- `visualize_cpd_detection(series, penalty=20, save_path="cpd_detection.png")`
+  draws change points detected by `ruptures` on top of a sequence so that you
+  can confirm whether CPD corresponds to actual distribution shifts.
 
 Directories in the provided `save_path` are created automatically, so you can
 use paths such as `outputs/z_bank_tsne.png` without pre-creating the folder.

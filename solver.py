@@ -17,6 +17,7 @@ from utils.analysis_tools import (
     plot_z_bank_umap,
     visualize_cpd_detection,
 )
+from utils.analysis_tools import plot_z_bank_tsne, visualize_cpd_detection
 import matplotlib.pyplot as plt
 import warnings
 
@@ -412,6 +413,8 @@ class Solver(object):
                     plot_z_bank_umap(self.model, self.train_loader, save_path=umap_path)
                 except Exception as e:
                     warnings.warn(f"Failed to create latent plots: {e}")
+                except Exception as e:
+                    warnings.warn(f"Failed to create t-SNE plot: {e}")
 
                 try:
                     series = self.vali_loader.dataset.val[:, 0]
