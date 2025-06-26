@@ -159,20 +159,19 @@ def train_model_with_replay(
     optimizer: torch.optim.Optimizer,
     current_data: torch.Tensor,
     cpd_penalty: int = 20,
+    min_gap: int = 30,
 ) -> tuple[float, bool]:
-def train_model_with_replay(model: AnomalyTransformerWithVAE,
-                            optimizer: torch.optim.Optimizer,
-                            current_data: torch.Tensor,
-                            min_gap: int = 30) -> tuple[float, bool]:
+    """Train model with replay based on detected concept drift."""
     model.train()
     data = current_data
     drift_detected = False
     if rpt is not None:
         try:
             drift = detect_drift_with_ruptures(
-                current_data.detach().cpu().numpy(), pen=cpd_penalty
+                current_data.detach().cpu().numpy(),
+                pen=cpd_penalty,
+                min_gap=min_gap,
             )
-                current_data.detach().cpu().numpy(), min_gap=min_gap)
         except Exception:
             warnings.warn("Change point detection failed; proceeding without replay")
             drift = False
