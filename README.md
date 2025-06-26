@@ -64,6 +64,8 @@ approach leverages the VAE branch to mitigate concept drift.
   `checkpoints`).
 - `--model_type`: `transformer` or `transformer_vae` (default
   `transformer_vae`).
+- `--min_cpd_gap`: minimum separation between detected change points (default
+  `30`).
 
 After training, the script prints the number of updates triggered by CPD events.
 Install the `ruptures` package (e.g., via `pip install ruptures`) so that these

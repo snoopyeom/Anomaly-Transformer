@@ -9,7 +9,7 @@ from .AnomalyTransformer import EncoderLayer, Encoder
 from .attn import AnomalyAttention, AttentionLayer
 from .embed import DataEmbedding
 
-from utils.utils import my_kl_loss
+from utils.utils import my_kl_loss, filter_short_segments
 
 
 try:
@@ -129,7 +129,7 @@ class AnomalyTransformerWithVAE(nn.Module):
         return recon
 
 
-def detect_drift_with_ruptures(window: np.ndarray, pen: int = 20) -> bool:
+def detect_drift_with_ruptures(window: np.ndarray, pen: int = 20, min_gap: int = 30) -> bool:
     if rpt is None:
         raise ImportError("ruptures is required for drift detection")
     # accept batches in (batch, seq_len, features) form
@@ -137,18 +137,21 @@ def detect_drift_with_ruptures(window: np.ndarray, pen: int = 20) -> bool:
         window = window.reshape(window.shape[0], -1)
     algo = rpt.Pelt(model="l2").fit(window)
     result = algo.predict(pen=pen)
+    result = filter_short_segments(result, min_gap)
     return len(result) > 1
 
 
 def train_model_with_replay(model: AnomalyTransformerWithVAE,
                             optimizer: torch.optim.Optimizer,
-                            current_data: torch.Tensor) -> tuple[float, bool]:
+                            current_data: torch.Tensor,
+                            min_gap: int = 30) -> tuple[float, bool]:
     model.train()
     data = current_data
     drift_detected = False
     if rpt is not None:
         try:
-            drift = detect_drift_with_ruptures(current_data.detach().cpu().numpy())
+            drift = detect_drift_with_ruptures(
+                current_data.detach().cpu().numpy(), min_gap=min_gap)
         except Exception:
             warnings.warn("Change point detection failed; proceeding without replay")
             drift = False
