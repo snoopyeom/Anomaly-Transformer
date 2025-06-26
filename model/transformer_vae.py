@@ -154,6 +154,12 @@ def detect_drift_with_ruptures(window: np.ndarray, pen: int = 20, min_gap: int =
     return len(result) > 1
 
 
+def train_model_with_replay(
+    model: AnomalyTransformerWithVAE,
+    optimizer: torch.optim.Optimizer,
+    current_data: torch.Tensor,
+    cpd_penalty: int = 20,
+) -> tuple[float, bool]:
 def train_model_with_replay(model: AnomalyTransformerWithVAE,
                             optimizer: torch.optim.Optimizer,
                             current_data: torch.Tensor,
@@ -164,6 +170,8 @@ def train_model_with_replay(model: AnomalyTransformerWithVAE,
     if rpt is not None:
         try:
             drift = detect_drift_with_ruptures(
+                current_data.detach().cpu().numpy(), pen=cpd_penalty
+            )
                 current_data.detach().cpu().numpy(), min_gap=min_gap)
         except Exception:
             warnings.warn("Change point detection failed; proceeding without replay")

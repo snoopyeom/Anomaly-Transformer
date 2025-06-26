@@ -57,6 +57,12 @@ def main():
     parser.add_argument('--beta', type=float, default=1.0)
     parser.add_argument('--replay_horizon', type=int, default=None)
     parser.add_argument('--model_tag', type=str, default='dynamic')
+    parser.add_argument(
+        '--cpd_penalty',
+        type=int,
+        default=20,
+        help='Penalty value for ruptures change point detection',
+    )
 
     args = parser.parse_args()
 
