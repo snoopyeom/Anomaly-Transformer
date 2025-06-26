@@ -74,6 +74,7 @@ class Solver(object):
         'latent_dim': 16,
         'beta': 1.0,
         'replay_size': 1000,
+        'replay_horizon': None,
         'anomaly_ratio': 1.0,
         'min_cpd_gap': 30,
     }
@@ -121,7 +122,8 @@ class Solver(object):
                 enc_in=self.input_c,
                 latent_dim=getattr(self, 'latent_dim', 16),
                 beta=getattr(self, 'beta', 1.0),
-                replay_size=getattr(self, 'replay_size', 1000))
+                replay_size=getattr(self, 'replay_size', 1000),
+                replay_horizon=getattr(self, 'replay_horizon', None))
         else:
             self.model = AnomalyTransformer(
                 win_size=self.win_size,

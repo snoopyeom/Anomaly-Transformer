@@ -64,8 +64,13 @@ approach leverages the VAE branch to mitigate concept drift.
   `checkpoints`).
 - `--model_type`: `transformer` or `transformer_vae` (default
   `transformer_vae`).
+<<<<<<< codex/add-timestamp-decay-to-z_bank
+- `--replay_horizon`: keep latent vectors for at most this many training
+  steps when using the VAE model (default `None`).
+=======
 - `--min_cpd_gap`: minimum separation between detected change points (default
   `30`).
+>>>>>>> main
 
 After training, the script prints the number of updates triggered by CPD events.
 Install the `ruptures` package (e.g., via `pip install ruptures`) so that these

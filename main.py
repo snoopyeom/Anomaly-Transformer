@@ -42,6 +42,7 @@ if __name__ == '__main__':
                         choices=['transformer', 'transformer_vae'])
     parser.add_argument('--latent_dim', type=int, default=16)
     parser.add_argument('--beta', type=float, default=1.0)
+    parser.add_argument('--replay_horizon', type=int, default=None)
     parser.add_argument('--model_tag', type=str, default=None)
     parser.add_argument('--dataset', type=str, default='credit')
     parser.add_argument('--mode', type=str, default='train', choices=['train', 'test'])
