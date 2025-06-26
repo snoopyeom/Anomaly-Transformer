@@ -318,8 +318,8 @@ class Solver(object):
                         self.optimizer,
                         input,
                         cpd_penalty=getattr(self, 'cpd_penalty', 20),
+                        min_gap=getattr(self, 'min_cpd_gap', 30),
                     )
-                        self.model, self.optimizer, input, self.min_cpd_gap)
                     loss1_list.append(loss)
                     if updated:
                         self.update_count += 1
