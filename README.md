@@ -78,6 +78,10 @@ python incremental_experiment.py \
 ```
 
 Training and evaluation artifacts are saved under `--model_save_path`.
+Two figures, `f1_score.png` and `roc_auc.png`, visualize F1 score and ROC AUC
+across the number of CPD-triggered updates. Metrics are recorded at the end of
+each epoch, so each point corresponds to the update count observed up to that
+epoch.
 Metrics are recorded at the end of each epoch, so each point corresponds to the
 update count observed up to that epoch.
 F1 Score와 ROC AUC가 CPD 업데이트 횟수에 따라 그래프로 저장되며,
