@@ -42,7 +42,9 @@ def create_synthetic_series(n_steps=400):
 
 def main():
     series = create_synthetic_series()
-    visualize_cpd_detection(series.squeeze(), penalty=20, save_path="cpd_demo.png")
+    visualize_cpd_detection(
+        series.squeeze(), penalty=20, save_path="cpd_demo.png", top_k=1
+    )
 
     # minimal model to generate latent vectors
     model = AnomalyTransformerWithVAE(
