@@ -86,7 +86,9 @@ def plot_z_bank_umap(model, loader, n_samples=500, save_path="z_bank_umap.png"):
     _scatter_projection(orig_latents, replay_latents, reduced, "UMAP of Latent Vectors", save_path)
 
 
-def visualize_cpd_detection(series, penalty=None, min_size=30, save_path="cpd_detection.png"):
+def visualize_cpd_detection(series, penalty=None, min_size=30,
+                            save_path="cpd_detection.png", *,
+                            zoom_range=None, top_k=None, zoom_margin=50):
     """Plot change-point locations predicted by ``ruptures``.
 
     Parameters
@@ -100,11 +102,30 @@ def visualize_cpd_detection(series, penalty=None, min_size=30, save_path="cpd_de
         Minimum distance between change points, defaults to ``30``.
     save_path : str, optional
         Path to save the visualization.
+    zoom_range : tuple(int, int), optional
+        When set, only ``series[start:end]`` is plotted while the x-axis keeps
+        the original indices.
+    top_k : int, optional
+        Create ``top_k`` additional zoomed views of the most significant change
+        points. Saved with ``_top{i}`` suffixes next to ``save_path``.
+    zoom_margin : int, optional
+        Half-window size around a selected change point for the zoomed views,
+        defaulting to ``50``.
     """
     if rpt is None:
         raise ImportError("ruptures is required for CPD visualization")
 
     series = np.asarray(series)
+    orig_series = series
+    if zoom_range is not None:
+        start, end = zoom_range
+        start = max(start, 0)
+        end = min(end, len(series))
+        series = series[start:end]
+        offset = start
+    else:
+        offset = 0
+
     if series.ndim == 1:
         data = series.reshape(-1, 1)
         plot_target = series
@@ -119,12 +140,36 @@ def visualize_cpd_detection(series, penalty=None, min_size=30, save_path="cpd_de
     result = algo.predict(pen=penalty)
 
     plt.figure()
-    plt.plot(plot_target, label="series")
+    x_vals = np.arange(offset, offset + len(plot_target))
+    plt.plot(x_vals, plot_target, label="series")
     for cp in result[:-1]:
-        plt.axvline(cp, color="r", linestyle="--", alpha=0.8)
+        plt.axvline(cp + offset, color="r", linestyle="--", alpha=0.8)
     plt.xlabel("Time")
     plt.title("Change Point Detection")
     plt.tight_layout()
     os.makedirs(os.path.dirname(save_path) or '.', exist_ok=True)
     plt.savefig(save_path)
     plt.close()
+
+    if top_k:
+        metrics = []
+        for cp in result[:-1]:
+            left = max(cp - zoom_margin, 0)
+            right = min(cp + zoom_margin, len(data))
+            before = data[left:cp]
+            after = data[cp:right]
+            var_change = abs(np.var(after) - np.var(before))
+            metrics.append((var_change, cp))
+
+        metrics.sort(reverse=True)
+        base, ext = os.path.splitext(save_path)
+        top_cps = [cp for _, cp in metrics[:top_k]]
+        for i, cp in enumerate(top_cps, 1):
+            global_cp = cp + offset
+            start = max(global_cp - zoom_margin, 0)
+            end = min(global_cp + zoom_margin, len(orig_series))
+            zoom_path = f"{base}_top{i}{ext}"
+            visualize_cpd_detection(
+                orig_series, penalty=penalty, min_size=min_size,
+                save_path=zoom_path, zoom_range=(start, end),
+                top_k=None, zoom_margin=zoom_margin)
