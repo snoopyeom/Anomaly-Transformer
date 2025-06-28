@@ -63,6 +63,8 @@ def main():
         default=20,
         help='Penalty value for ruptures change point detection',
     )
+    parser.add_argument('--cpd_log_interval', type=int, default=20,
+                        help='log metrics every N CPD updates')
 
     args = parser.parse_args()
 

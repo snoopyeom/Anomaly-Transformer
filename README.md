@@ -70,6 +70,8 @@ approach leverages the VAE branch to mitigate concept drift.
   steps when using the VAE model (default `None`).
 - `--min_cpd_gap`: minimum separation between detected change points (default
   `30`).
+- `--cpd_log_interval`: evaluate and print metrics only after this many CPD
+  updates (default `20`).
 
 After training, the script prints the number of updates triggered by CPD events.
 Install the `ruptures` package (e.g., via `pip install ruptures`) so that these
@@ -119,6 +121,7 @@ qualitatively inspecting continual learning behavior.
 - A quick demo script `scripts/visualize_cpd_demo.py` generates a toy series and
   saves `cpd_demo.png`, `tsne_demo.png`, and `pca_demo.png` so you can verify
   that these utilities work without preparing a real dataset.
+  This demo requires `numpy`, `scikit-learn`, `matplotlib`, and `ruptures`.
 
 Directories in the provided `save_path` are created automatically, so you can
 use paths such as `outputs/z_bank_tsne.png` without pre-creating the folder.
