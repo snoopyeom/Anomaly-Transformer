@@ -6,7 +6,7 @@ except ImportError as exc:
     raise SystemExit("numpy is required for this demo: install with 'pip install numpy'") from exc
 
 missing = []
-for _mod in ["sklearn", "matplotlib", "ruptures"]:
+for _mod in ["torch", "sklearn", "matplotlib", "ruptures"]:
     try:
         __import__(_mod)
     except ImportError:
