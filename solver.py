@@ -83,6 +83,7 @@ class Solver(object):
         'cpd_penalty': 20,
         'min_cpd_gap': 30,
         'cpd_log_interval': 20,
+        'cpd_top_k': 3,
     }
 
     def __init__(self, config):
@@ -452,7 +453,8 @@ class Solver(object):
                 try:
                     series = self.vali_loader.dataset.val[:, 0]
                     cpd_path = os.path.join(path, 'cpd_detection.png')
-                    visualize_cpd_detection(series, save_path=cpd_path)
+                    visualize_cpd_detection(series, save_path=cpd_path,
+                                            top_k=getattr(self, 'cpd_top_k', None))
                 except Exception as e:
                     warnings.warn(f"Failed to visualize CPD: {e}")
 

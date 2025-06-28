@@ -72,6 +72,8 @@ def main():
         default=20,
         help='Penalty value for ruptures change point detection',
     )
+    parser.add_argument('--cpd_top_k', type=int, default=3,
+                        help='number of zoomed views for CPD visualization')
     parser.add_argument('--cpd_log_interval', type=int, default=20,
                         help='log metrics every N CPD updates')
 
