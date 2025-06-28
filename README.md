@@ -116,6 +116,9 @@ qualitatively inspecting continual learning behavior.
 - `visualize_cpd_detection(series, penalty=20, save_path="cpd_detection.png")`
   draws change points detected by `ruptures` on top of a sequence so that you
   can confirm whether CPD corresponds to actual distribution shifts.
+- A quick demo script `scripts/visualize_cpd_demo.py` generates a toy series and
+  saves `cpd_demo.png`, `tsne_demo.png`, and `pca_demo.png` so you can verify
+  that these utilities work without preparing a real dataset.
 
 Directories in the provided `save_path` are created automatically, so you can
 use paths such as `outputs/z_bank_tsne.png` without pre-creating the folder.
