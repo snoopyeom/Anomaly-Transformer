@@ -57,6 +57,8 @@ if __name__ == '__main__':
     )
     parser.add_argument('--min_cpd_gap', type=int, default=30,
                         help='minimum gap between CPD change points')
+    parser.add_argument('--cpd_log_interval', type=int, default=20,
+                        help='log metrics every N CPD updates')
 
     config = parser.parse_args()
     if config.model_tag is None:

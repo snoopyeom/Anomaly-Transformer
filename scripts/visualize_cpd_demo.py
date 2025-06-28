@@ -1,6 +1,20 @@
 """Demonstrate CPD and latent space visualizations on synthetic data."""
 
-import numpy as np
+try:
+    import numpy as np
+except ImportError as exc:
+    raise SystemExit("numpy is required for this demo: install with 'pip install numpy'") from exc
+
+missing = []
+for _mod in ["sklearn", "matplotlib", "ruptures"]:
+    try:
+        __import__(_mod)
+    except ImportError:
+        missing.append(_mod)
+if missing:
+    raise SystemExit(
+        "Missing required packages: " + ", ".join(missing) + ". Install them with 'pip install " + " ".join(missing) + "'"
+    )
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
