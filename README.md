@@ -76,6 +76,7 @@ approach leverages the VAE branch to mitigate concept drift.
   `30`).
 - `--cpd_log_interval`: evaluate and print metrics only after this many CPD
   updates (default `20`).
+- `--cpd_top_k`: number of zoomed views for CPD visualization (default `3`).
 
 After training, the script prints the number of updates triggered by CPD events.
 Install the `ruptures` package (e.g., via `pip install ruptures`) so that these
