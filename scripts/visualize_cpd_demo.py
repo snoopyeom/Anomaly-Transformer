@@ -11,6 +11,7 @@ if PROJECT_ROOT not in sys.path:
 
 missing = []
 for _mod in ["numpy", "torch", "sklearn", "matplotlib", "ruptures"]:
+for _mod in ["torch", "sklearn", "matplotlib", "ruptures"]:
     try:
         globals()[_mod] = __import__(_mod)
     except ImportError:

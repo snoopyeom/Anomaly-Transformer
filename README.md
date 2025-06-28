@@ -136,6 +136,7 @@ qualitatively inspecting continual learning behavior.
   ```
   The script checks for these dependencies and exits with a message if any are
   missing.
+  and then run the demo script.
 
 Directories in the provided `save_path` are created automatically, so you can
 use paths such as `outputs/z_bank_tsne.png` without pre-creating the folder.
