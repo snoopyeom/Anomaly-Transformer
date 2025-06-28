@@ -21,6 +21,7 @@ if missing:
         + ", ".join(missing)
         + ". Install them with 'pip install -r requirements-demo.txt'"
     )
+import numpy as np
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
@@ -54,7 +55,10 @@ def main():
         latent_dim=4,
         replay_size=50,
     )
-    data = torch.tensor(series, dtype=torch.float32).unsqueeze(0)
+    tensor_series = torch.tensor(series, dtype=torch.float32)
+    windows = [tensor_series[i:i + model.win_size]
+               for i in range(len(tensor_series) - model.win_size + 1)]
+    data = torch.stack(windows)
     labels = torch.zeros(len(data))  # dummy labels required by analysis utils
     dataset = TensorDataset(data, labels)
     loader = DataLoader(dataset, batch_size=1)
