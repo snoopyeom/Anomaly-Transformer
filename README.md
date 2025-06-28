@@ -130,6 +130,12 @@ qualitatively inspecting continual learning behavior.
   ```bash
   pip install -r requirements-demo.txt
   ```
+  and then run the demo script from the repository root:
+  ```bash
+  python -m scripts.visualize_cpd_demo
+  ```
+  The script checks for these dependencies and exits with a message if any are
+  missing.
   and then run the demo script.
 
 Directories in the provided `save_path` are created automatically, so you can

@@ -1,19 +1,26 @@
 """Demonstrate CPD and latent space visualizations on synthetic data."""
 
-try:
-    import numpy as np
-except ImportError as exc:
-    raise SystemExit("numpy is required for this demo: install with 'pip install numpy'") from exc
+# Allow running this script directly from ``scripts/`` by adding the project
+# root to ``sys.path`` so that ``utils`` can be imported without a module error.
+import os
+import sys
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 missing = []
+for _mod in ["numpy", "torch", "sklearn", "matplotlib", "ruptures"]:
 for _mod in ["torch", "sklearn", "matplotlib", "ruptures"]:
     try:
-        __import__(_mod)
+        globals()[_mod] = __import__(_mod)
     except ImportError:
         missing.append(_mod)
 if missing:
     raise SystemExit(
-        "Missing required packages: " + ", ".join(missing) + ". Install them with 'pip install " + " ".join(missing) + "'"
+        "Missing required packages: "
+        + ", ".join(missing)
+        + ". Install them with 'pip install -r requirements-demo.txt'"
     )
 import torch
 from torch.utils.data import DataLoader, TensorDataset
