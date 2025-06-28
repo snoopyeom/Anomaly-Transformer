@@ -49,7 +49,8 @@ def main():
         replay_size=50,
     )
     data = torch.tensor(series, dtype=torch.float32).unsqueeze(0)
-    dataset = TensorDataset(data)
+    labels = torch.zeros(len(data))  # dummy labels required by analysis utils
+    dataset = TensorDataset(data, labels)
     loader = DataLoader(dataset, batch_size=1)
 
     with torch.no_grad():
