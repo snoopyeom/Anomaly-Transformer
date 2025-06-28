@@ -323,6 +323,14 @@ class Solver(object):
                     loss1_list.append(loss)
                     if updated:
                         self.update_count += 1
+                        # evaluate immediately after concept drift update
+                        vali_loss1, vali_loss2 = self.vali(self.test_loader)
+                        f1, auc = self.compute_metrics()
+                        self.history.append((self.update_count, f1, auc))
+                        print(
+                            f"Update {self.update_count}: Val Loss {vali_loss1:.4f} "
+                            f"F1 {f1:.4f} AUC {auc:.4f}"
+                        )
                     if (i + 1) % 100 == 0:
                         speed = (time.time() - time_now) / iter_count
                         left_time = speed * ((self.num_epochs - epoch) * train_steps - i)
@@ -376,8 +384,12 @@ class Solver(object):
             train_loss = np.average(loss1_list)
 
             vali_loss1, vali_loss2 = self.vali(self.test_loader)
-            f1, auc = self.compute_metrics()
-            self.history.append((self.update_count, f1, auc))
+            if not self.history or self.history[-1][0] != self.update_count:
+                # record metrics even if no updates occurred this epoch
+                f1, auc = self.compute_metrics()
+                self.history.append((self.update_count, f1, auc))
+            else:
+                f1, auc = self.history[-1][1], self.history[-1][2]
 
             print(
                 "Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Val Loss: {3:.7f} F1: {4:.4f} AUC: {5:.4f}".format(
