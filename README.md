@@ -124,8 +124,13 @@ qualitatively inspecting continual learning behavior.
   can confirm whether CPD corresponds to actual distribution shifts.
 - A quick demo script `scripts/visualize_cpd_demo.py` generates a toy series and
   saves `cpd_demo.png`, `tsne_demo.png`, and `pca_demo.png` so you can verify
-  that these utilities work without preparing a real dataset.
-  This demo requires `numpy`, `scikit-learn`, `matplotlib`, and `ruptures`.
+  that these utilities work without preparing a real dataset. Install the
+  dependencies (`numpy`, `matplotlib`, `scikit-learn`, `ruptures`, and `torch`)
+  listed in `requirements-demo.txt` with
+  ```bash
+  pip install -r requirements-demo.txt
+  ```
+  and then run the demo script.
 
 Directories in the provided `save_path` are created automatically, so you can
 use paths such as `outputs/z_bank_tsne.png` without pre-creating the folder.
