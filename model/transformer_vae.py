@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import numpy as np
 import random
 import warnings
+import copy
 
 from .AnomalyTransformer import EncoderLayer, Encoder
 from .attn import AnomalyAttention, AttentionLayer
@@ -23,6 +24,65 @@ def my_kl_loss(p, q):
     return torch.mean(torch.sum(res, dim=-1), dim=1)
 
 
+class MLPDecoder(nn.Module):
+    """Two-layer MLP decoder."""
+
+    def __init__(self, latent_dim: int, d_model: int, win_size: int, enc_in: int):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(latent_dim, d_model),
+            nn.ReLU(),
+            nn.Linear(d_model, win_size * enc_in),
+        )
+        self.win_size = win_size
+        self.enc_in = enc_in
+
+    def forward(self, z: torch.Tensor) -> torch.Tensor:
+        out = self.net(z)
+        return out.view(z.size(0), self.win_size, self.enc_in)
+
+
+class RNNDecoder(nn.Module):
+    """GRU-based decoder for sequential reconstruction."""
+
+    def __init__(self, latent_dim: int, d_model: int, win_size: int, enc_in: int):
+        super().__init__()
+        self.h_proj = nn.Linear(latent_dim, d_model)
+        self.rnn = nn.GRU(d_model, d_model, batch_first=True)
+        self.out = nn.Linear(d_model, enc_in)
+        self.win_size = win_size
+
+    def forward(self, z: torch.Tensor) -> torch.Tensor:
+        h0 = torch.tanh(self.h_proj(z)).unsqueeze(0)
+        inputs = torch.zeros(z.size(0), self.win_size, h0.size(-1), device=z.device)
+        out, _ = self.rnn(inputs, h0)
+        return self.out(out)
+
+
+class AttentionDecoder(nn.Module):
+    """Transformer decoder variant."""
+
+    def __init__(self, latent_dim: int, d_model: int, win_size: int, enc_in: int,
+                 n_heads: int, d_ff: int):
+        super().__init__()
+        layer = nn.TransformerDecoderLayer(
+            d_model=d_model,
+            nhead=n_heads,
+            dim_feedforward=d_ff,
+            batch_first=True,
+        )
+        self.decoder = nn.TransformerDecoder(layer, num_layers=1)
+        self.fc = nn.Linear(latent_dim, d_model)
+        self.out = nn.Linear(d_model, enc_in)
+        self.win_size = win_size
+
+    def forward(self, z: torch.Tensor) -> torch.Tensor:
+        tgt = self.fc(z).unsqueeze(1).repeat(1, self.win_size, 1)
+        memory = torch.zeros_like(tgt)
+        out = self.decoder(tgt, memory)
+        return self.out(out)
+
+
 
 class AnomalyTransformerWithVAE(nn.Module):
     """Anomaly Transformer augmented with a VAE branch."""
@@ -30,7 +90,11 @@ class AnomalyTransformerWithVAE(nn.Module):
     def __init__(self, win_size, enc_in, d_model=512, n_heads=8, e_layers=3,
                  d_ff=512, dropout=0.0, activation='gelu', latent_dim=16,
                  beta: float = 1.0, replay_size: int = 1000,
-                 replay_horizon: int | None = None):
+                 replay_horizon: int | None = None,
+                 store_mu: bool = False,
+                 freeze_after: int | None = None,
+                 ema_decay: float | None = None,
+                 decoder_type: str = 'mlp'):
 
         super().__init__()
         self.win_size = win_size
@@ -40,6 +104,10 @@ class AnomalyTransformerWithVAE(nn.Module):
         self.replay_size = replay_size
         self.replay_horizon = replay_horizon
         self.current_step = 0
+        self.store_mu = store_mu
+        self.freeze_after = freeze_after
+        self.ema_decay = ema_decay
+        self.encoder_frozen = False
 
 
         # Transformer components
@@ -64,24 +132,52 @@ class AnomalyTransformerWithVAE(nn.Module):
         # VAE components
         self.fc_mu = nn.Linear(d_model, latent_dim)
         self.fc_logvar = nn.Linear(d_model, latent_dim)
-        self.decoder = nn.Sequential(
-            nn.Linear(latent_dim, d_model),
-            nn.ReLU(),
-            nn.Linear(d_model, win_size * enc_in)
-        )
+        if decoder_type == 'mlp':
+            self.decoder = MLPDecoder(latent_dim, d_model, win_size, enc_in)
+        elif decoder_type == 'rnn':
+            self.decoder = RNNDecoder(latent_dim, d_model, win_size, enc_in)
+        elif decoder_type == 'attention':
+            self.decoder = AttentionDecoder(latent_dim, d_model, win_size, enc_in, n_heads, d_ff)
+        else:
+            raise ValueError(f"Unknown decoder_type: {decoder_type}")
 
         # store tuples of (latent_vector, step) for experience replay
         self.z_bank = []
         self.last_mu = None
         self.last_logvar = None
 
+        if self.ema_decay is not None:
+            self.encoder_ema = copy.deepcopy(self.encoder)
+            for p in self.encoder_ema.parameters():
+                p.requires_grad_(False)
+        else:
+            self.encoder_ema = None
+
     def _purge_z_bank(self) -> None:
         """Remove stale latent vectors based on ``replay_horizon`` and size."""
         if self.replay_horizon is not None:
             threshold = self.current_step - self.replay_horizon
-            self.z_bank = [item for item in self.z_bank if item[1] > threshold]
+            self.z_bank = [item for item in self.z_bank if item[-1] > threshold]
         if len(self.z_bank) > self.replay_size:
             self.z_bank = self.z_bank[-self.replay_size:]
+
+    def update_ema(self) -> None:
+        """Update EMA weights for the encoder."""
+        if self.ema_decay is None or self.encoder_ema is None:
+            return
+        with torch.no_grad():
+            for p, p_ema in zip(self.encoder.parameters(), self.encoder_ema.parameters()):
+                p_ema.mul_(self.ema_decay)
+                p_ema.add_(p * (1.0 - self.ema_decay))
+
+    def maybe_freeze_encoder(self) -> None:
+        """Freeze encoder parameters after ``freeze_after`` steps."""
+        if (self.freeze_after is not None and
+                self.current_step >= self.freeze_after and
+                not self.encoder_frozen):
+            for param in self.encoder.parameters():
+                param.requires_grad_(False)
+            self.encoder_frozen = True
 
     def compute_attention_discrepancy(self, series, prior):
         total = 0.0
@@ -102,15 +198,22 @@ class AnomalyTransformerWithVAE(nn.Module):
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
         z = mu + eps * std
-        recon = self.decoder(z).view(x.size(0), self.win_size, self.enc_in)
+        recon = self.decoder(z)
 
         # advance time step and store latent samples for later replay
         self.current_step += 1
-        self.z_bank.extend((vec.detach().cpu(), self.current_step) for vec in z)
+        if self.store_mu:
+            for mu_i, logvar_i in zip(mu, logvar):
+                self.z_bank.append((mu_i.detach().cpu(), logvar_i.detach().cpu(), self.current_step))
+        else:
+            self.z_bank.extend((vec.detach().cpu(), self.current_step) for vec in z)
         self._purge_z_bank()
+
 
         self.last_mu = mu
         self.last_logvar = logvar
+
+        self.maybe_freeze_encoder()
 
         return recon, series, prior, z
 
@@ -129,16 +232,26 @@ class AnomalyTransformerWithVAE(nn.Module):
             dim=1)
         return torch.mean(kl)
 
-    def generate_replay_samples(self, n):
+    def generate_replay_samples(self, n, deterministic: bool = False):
         """Generate reconstructions from stored latent vectors."""
         self._purge_z_bank()
         if len(self.z_bank) == 0:
             return None
         idx = np.random.choice(len(self.z_bank), size=min(n, len(self.z_bank)), replace=False)
-        z = torch.stack([self.z_bank[i][0] for i in idx])
-        z = z.to(next(self.parameters()).device)
+        device = next(self.parameters()).device
+        if self.store_mu:
+            mus = torch.stack([self.z_bank[i][0] for i in idx]).to(device)
+            logvars = torch.stack([self.z_bank[i][1] for i in idx]).to(device)
+            if deterministic:
+                z = mus
+            else:
+                std = torch.exp(0.5 * logvars)
+                eps = torch.randn_like(std)
+                z = mus + eps * std
+        else:
+            z = torch.stack([self.z_bank[i][0] for i in idx]).to(device)
         with torch.no_grad():
-            recon = self.decoder(z).view(len(idx), self.win_size, self.enc_in)
+            recon = self.decoder(z)
         return recon
 
 
@@ -187,4 +300,5 @@ def train_model_with_replay(
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
+    model.update_ema()
     return loss.item(), drift_detected

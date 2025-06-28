@@ -56,6 +56,15 @@ def main():
     parser.add_argument('--latent_dim', type=int, default=16)
     parser.add_argument('--beta', type=float, default=1.0)
     parser.add_argument('--replay_horizon', type=int, default=None)
+    parser.add_argument('--store_mu', action='store_true',
+                        help='store mu/logvar instead of sampled z')
+    parser.add_argument('--freeze_after', type=int, default=None,
+                        help='freeze encoder after this many steps')
+    parser.add_argument('--ema_decay', type=float, default=None,
+                        help='EMA decay for encoder stabilization')
+    parser.add_argument('--decoder_type', type=str, default='mlp',
+                        choices=['mlp', 'rnn', 'attention'],
+                        help='decoder architecture')
     parser.add_argument('--model_tag', type=str, default='dynamic')
     parser.add_argument(
         '--cpd_penalty',

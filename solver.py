@@ -75,6 +75,10 @@ class Solver(object):
         'beta': 1.0,
         'replay_size': 1000,
         'replay_horizon': None,
+        'store_mu': False,
+        'freeze_after': None,
+        'ema_decay': None,
+        'decoder_type': 'mlp',
         'anomaly_ratio': 1.0,
         'cpd_penalty': 20,
         'min_cpd_gap': 30,
@@ -125,7 +129,12 @@ class Solver(object):
                 latent_dim=getattr(self, 'latent_dim', 16),
                 beta=getattr(self, 'beta', 1.0),
                 replay_size=getattr(self, 'replay_size', 1000),
-                replay_horizon=getattr(self, 'replay_horizon', None))
+                replay_horizon=getattr(self, 'replay_horizon', None),
+                store_mu=getattr(self, 'store_mu', False),
+                freeze_after=getattr(self, 'freeze_after', None),
+                ema_decay=getattr(self, 'ema_decay', None),
+                decoder_type=getattr(self, 'decoder_type', 'mlp'),
+            )
         else:
             self.model = AnomalyTransformer(
                 win_size=self.win_size,
