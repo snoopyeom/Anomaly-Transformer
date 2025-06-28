@@ -89,13 +89,11 @@ values, such as `--cpd_penalty 40`, will trigger fewer updates.
 
 Training and evaluation artifacts are saved under `--model_save_path`.
 Two figures, `f1_score.png` and `roc_auc.png`, visualize F1 score and ROC AUC
-across the number of CPD-triggered updates. Metrics are recorded at the end of
-each epoch, so each point corresponds to the update count observed up to that
-epoch.
-Metrics are recorded at the end of each epoch, so each point corresponds to the
-update count observed up to that epoch.
-F1 Score와 ROC AUC가 CPD 업데이트 횟수에 따라 그래프로 저장되며,
-각각 `f1_score.png`와 `roc_auc.png` 파일에서 확인할 수 있습니다.
+across the number of CPD-triggered updates. Starting with this version the
+metrics are evaluated **whenever CPD causes a model update**, so each point
+corresponds to a detected drift event rather than an epoch boundary.
+F1 Score와 ROC AUC가 CPD 업데이트가 발생할 때마다 기록되어
+`f1_score.png`와 `roc_auc.png` 파일로 저장됩니다.
 
 ## Visualization Utilities
 
