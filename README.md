@@ -68,6 +68,10 @@ approach leverages the VAE branch to mitigate concept drift.
   (default `20`). A larger value results in fewer detected drifts.
 - `--replay_horizon`: keep latent vectors for at most this many training
   steps when using the VAE model (default `None`).
+- `--store_mu`: store `(mu, logvar)` pairs instead of sampled `z` for replay.
+- `--freeze_after`: freeze the encoder after this many updates (default `None`).
+- `--ema_decay`: apply EMA to encoder weights with this decay (default `None`).
+- `--decoder_type`: choose decoder architecture: `mlp`, `rnn`, or `attention`.
 - `--min_cpd_gap`: minimum separation between detected change points (default
   `30`).
 - `--cpd_log_interval`: evaluate and print metrics only after this many CPD
