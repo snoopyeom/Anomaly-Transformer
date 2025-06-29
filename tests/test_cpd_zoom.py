@@ -28,6 +28,7 @@ def test_top_k(tmp_path):
 def test_extra_ranges(tmp_path):
     series = np.sin(np.linspace(0, 10, 100))
     out = tmp_path / "cpd.png"
+    visualize_cpd_detection(series, save_path=str(out), extra_zoom_ranges=[(0, 4000)])
     visualize_cpd_detection(series, save_path=str(out), extra_zoom_ranges=[(0, 20)])
     zoom = tmp_path / "cpd_range1.png"
     assert out.exists() and zoom.exists()

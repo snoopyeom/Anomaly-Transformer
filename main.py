@@ -57,12 +57,30 @@ if __name__ == '__main__':
     )
     parser.add_argument('--cpd_top_k', type=int, default=3,
                         help='number of zoomed views for CPD visualization')
+    parser.add_argument(
+        '--cpd_extra_ranges',
+        type=str,
+        default='0:4000',
+        help='comma-separated start:end pairs for additional CPD zoom views',
+    )
     parser.add_argument('--min_cpd_gap', type=int, default=30,
                         help='minimum gap between CPD change points')
     parser.add_argument('--cpd_log_interval', type=int, default=20,
                         help='log metrics every N CPD updates')
 
+    def _parse_ranges(arg):
+        if not arg:
+            return None
+        pairs = []
+        for part in arg.split(','):
+            if ':' not in part:
+                continue
+            start, end = part.split(':', 1)
+            pairs.append((int(start), int(end)))
+        return pairs or None
+
     config = parser.parse_args()
+    config.cpd_extra_ranges = _parse_ranges(config.cpd_extra_ranges)
     if config.model_tag is None:
         config.model_tag = config.dataset
 
