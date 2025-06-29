@@ -141,7 +141,7 @@ class AnomalyTransformerWithVAE(nn.Module):
         else:
             raise ValueError(f"Unknown decoder_type: {decoder_type}")
 
-        # store tuples of (latent_vector, step) for experience replay
+        # store tuples of (input, latent_vector, step) for experience replay
         self.z_bank = []
         self.last_mu = None
         self.last_logvar = None
@@ -200,13 +200,16 @@ class AnomalyTransformerWithVAE(nn.Module):
         z = mu + eps * std
         recon = self.decoder(z)
 
-        # advance time step and store latent samples for later replay
+        # advance time step and store (input, latent) pairs for later replay
         self.current_step += 1
         if self.store_mu:
-            for mu_i, logvar_i in zip(mu, logvar):
-                self.z_bank.append((mu_i.detach().cpu(), logvar_i.detach().cpu(), self.current_step))
+            for x_i, mu_i, logvar_i in zip(x, mu, logvar):
+                self.z_bank.append(
+                    (x_i.detach().cpu(), mu_i.detach().cpu(), logvar_i.detach().cpu(), self.current_step)
+                )
         else:
-            self.z_bank.extend((vec.detach().cpu(), self.current_step) for vec in z)
+            for x_i, vec in zip(x, z):
+                self.z_bank.append((x_i.detach().cpu(), vec.detach().cpu(), self.current_step))
         self._purge_z_bank()
 
 
@@ -240,8 +243,8 @@ class AnomalyTransformerWithVAE(nn.Module):
         idx = np.random.choice(len(self.z_bank), size=min(n, len(self.z_bank)), replace=False)
         device = next(self.parameters()).device
         if self.store_mu:
-            mus = torch.stack([self.z_bank[i][0] for i in idx]).to(device)
-            logvars = torch.stack([self.z_bank[i][1] for i in idx]).to(device)
+            mus = torch.stack([self.z_bank[i][1] for i in idx]).to(device)
+            logvars = torch.stack([self.z_bank[i][2] for i in idx]).to(device)
             if deterministic:
                 z = mus
             else:
@@ -249,7 +252,7 @@ class AnomalyTransformerWithVAE(nn.Module):
                 eps = torch.randn_like(std)
                 z = mus + eps * std
         else:
-            z = torch.stack([self.z_bank[i][0] for i in idx]).to(device)
+            z = torch.stack([self.z_bank[i][1] for i in idx]).to(device)
         with torch.no_grad():
             recon = self.decoder(z)
         return recon
@@ -262,8 +265,8 @@ class AnomalyTransformerWithVAE(nn.Module):
         ordered = sorted(self.z_bank, key=lambda t: t[-1])
         device = next(self.parameters()).device
         if self.store_mu:
-            mus = torch.stack([t[0] for t in ordered]).to(device)
-            logvars = torch.stack([t[1] for t in ordered]).to(device)
+            mus = torch.stack([t[1] for t in ordered]).to(device)
+            logvars = torch.stack([t[2] for t in ordered]).to(device)
             if deterministic:
                 z = mus
             else:
@@ -271,7 +274,7 @@ class AnomalyTransformerWithVAE(nn.Module):
                 eps = torch.randn_like(std)
                 z = mus + eps * std
         else:
-            z = torch.stack([t[0] for t in ordered]).to(device)
+            z = torch.stack([t[1] for t in ordered]).to(device)
         with torch.no_grad():
             recon = self.decoder(z)
         return recon

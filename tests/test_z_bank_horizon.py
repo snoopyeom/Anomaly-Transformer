@@ -24,4 +24,4 @@ def test_replay_horizon_pruning():
     # ensure purge is triggered by sampling
     model.generate_replay_samples(1)
     threshold = model.current_step - model.replay_horizon
-    assert all(ts > threshold for _, ts in model.z_bank)
+    assert all(item[-1] > threshold for item in model.z_bank)
