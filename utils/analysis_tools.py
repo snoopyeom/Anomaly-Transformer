@@ -27,8 +27,15 @@ def _collect_latents(model, loader, n_samples):
             enc = model.embedding(batch)
             enc, _, _, _ = model.encoder(enc)
             pooled = enc.mean(dim=1)
-            mu = model.fc_mu(pooled)
-        orig_latents.append(mu.cpu())
+            if hasattr(model, "fc_mu"):
+                lat = model.fc_mu(pooled)
+            elif hasattr(model, "fc_latent"):
+                lat = model.fc_latent(pooled)
+            else:
+                raise AttributeError(
+                    "Model does not expose a latent projection via `fc_mu` or `fc_latent`"
+                )
+        orig_latents.append(lat.cpu())
         seen += len(batch)
         if seen >= n_samples:
             break

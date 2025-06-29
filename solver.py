@@ -429,7 +429,7 @@ class Solver(object):
             if self.history:
                 counts, f1s, aucs = zip(*self.history)
                 plt.figure()
-                plt.plot(counts, f1s, marker='o')
+                plt.plot(counts, f1s, marker='o', linestyle='-')
                 plt.xlabel('CPD Updates')
                 plt.ylabel('F1 Score')
                 plt.title('F1 Score over Updates')
@@ -439,7 +439,7 @@ class Solver(object):
                 plt.close()
 
                 plt.figure()
-                plt.plot(counts, aucs, marker='x', color='tab:red')
+                plt.plot(counts, aucs, marker='x', linestyle='-', color='tab:red')
                 plt.xlabel('CPD Updates')
                 plt.ylabel('ROC AUC')
                 plt.title('ROC AUC over Updates')
