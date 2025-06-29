@@ -211,7 +211,6 @@ def plot_replay_vs_series(model, series, *, start=0, end=4000,
     series = np.asarray(series).squeeze()
     start = max(0, start)
     end = min(len(series), end)
-    actual = series[start:end]
 
     n_samples = end - start
     replay = model.generate_replay_samples(n_samples)
@@ -220,18 +219,25 @@ def plot_replay_vs_series(model, series, *, start=0, end=4000,
     replay = replay.detach().cpu().numpy()[:, :, 0]
 
     win_size = replay.shape[1]
-    recon = np.zeros(n_samples)
-    counts = np.zeros(n_samples)
-    for i in range(n_samples):
-        win = replay[i]
-        idx = slice(i, i + win_size)
-        if idx.stop > n_samples:
+    available = replay.shape[0]
+    max_len = min(n_samples, available + win_size - 1)
+    recon = np.zeros(max_len)
+    counts = np.zeros(max_len)
+    for i in range(available):
+        idx_start = i
+        idx_end = i + win_size
+        if idx_start >= max_len:
             break
-        recon[idx] += win[: min(win_size, n_samples - i)]
-        counts[idx] += 1
+        win = replay[i]
+        if idx_end > max_len:
+            win = win[: max_len - idx_start]
+            idx_end = max_len
+        recon[idx_start:idx_end] += win
+        counts[idx_start:idx_end] += 1
     counts[counts == 0] = 1
     recon /= counts
 
+    actual = series[start:start + max_len]
     x = np.arange(start, start + len(actual))
     plt.figure()
     plt.plot(x, actual, label="Actual")
