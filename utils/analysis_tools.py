@@ -186,3 +186,60 @@ def visualize_cpd_detection(series, penalty=None, min_size=30,
                 orig_series, penalty=penalty, min_size=min_size,
                 save_path=zoom_path, zoom_range=(start, end),
                 top_k=None, zoom_margin=zoom_margin)
+
+
+def plot_replay_vs_series(model, series, *, start=0, end=4000,
+                          save_path="replay_vs_series.png"):
+    """Compare replay-generated samples with the original series.
+
+    Parameters
+    ----------
+    model : AnomalyTransformerWithVAE
+        Model containing a populated ``z_bank``.
+    series : array-like
+        1D sequence used during training.
+    start : int, optional
+        Starting index of the slice to plot.
+    end : int, optional
+        End index of the slice to plot.
+    save_path : str, optional
+        Location where the figure will be saved.
+    """
+    if not model.z_bank:
+        raise ValueError("z_bank is empty; train the model before calling")
+
+    series = np.asarray(series).squeeze()
+    start = max(0, start)
+    end = min(len(series), end)
+    actual = series[start:end]
+
+    n_samples = end - start
+    replay = model.generate_replay_samples(n_samples)
+    if replay is None:
+        raise ValueError("Not enough entries in z_bank for replay")
+    replay = replay.detach().cpu().numpy()[:, :, 0]
+
+    win_size = replay.shape[1]
+    recon = np.zeros(n_samples)
+    counts = np.zeros(n_samples)
+    for i in range(n_samples):
+        win = replay[i]
+        idx = slice(i, i + win_size)
+        if idx.stop > n_samples:
+            break
+        recon[idx] += win[: min(win_size, n_samples - i)]
+        counts[idx] += 1
+    counts[counts == 0] = 1
+    recon /= counts
+
+    x = np.arange(start, start + len(actual))
+    plt.figure()
+    plt.plot(x, actual, label="Actual")
+    plt.plot(x[:len(recon)], recon, label="Replay", alpha=0.7)
+    plt.xlabel("Time")
+    plt.title("Replay vs Actual")
+    plt.legend()
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path) or '.', exist_ok=True)
+    plt.savefig(save_path)
+    plt.close()
