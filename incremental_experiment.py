@@ -3,6 +3,14 @@
 import argparse
 import os
 
+try:
+    import torch  # noqa: F401
+except ModuleNotFoundError as exc:  # pragma: no cover - graceful message
+    raise SystemExit(
+        "PyTorch is required to run this script.\n"
+        "Install dependencies with 'pip install -r requirements-demo.txt'"
+    ) from exc
+
 from main import main as run_main
 from utils.analysis_tools import plot_replay_vs_series
 
