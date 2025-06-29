@@ -401,10 +401,19 @@ class Solver(object):
             train_loss = np.average(loss1_list)
 
             vali_loss1, vali_loss2 = self.vali(self.test_loader)
-            if not self.history or self.history[-1][0] != self.update_count:
-                # record metrics even if no updates occurred this epoch
+            need_metrics = (
+                not self.history
+                or self.history[-1][0] != self.update_count
+                or np.isnan(self.history[-1][1])
+                or np.isnan(self.history[-1][2])
+            )
+            if need_metrics:
+                # compute metrics if none recorded for this update or if NaN
                 f1, auc = self.compute_metrics()
-                self.history.append((self.update_count, f1, auc))
+                if not self.history or self.history[-1][0] != self.update_count:
+                    self.history.append((self.update_count, f1, auc))
+                else:
+                    self.history[-1] = (self.update_count, f1, auc)
             else:
                 f1, auc = self.history[-1][1], self.history[-1][2]
 
