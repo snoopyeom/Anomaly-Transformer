@@ -88,7 +88,8 @@ def plot_z_bank_umap(model, loader, n_samples=500, save_path="z_bank_umap.png"):
 
 def visualize_cpd_detection(series, penalty=None, min_size=30,
                             save_path="cpd_detection.png", *,
-                            zoom_range=None, top_k=None, zoom_margin=50):
+                            zoom_range=None, top_k=None, zoom_margin=50,
+                            extra_zoom_ranges=None):
     """Plot change-point locations predicted by ``ruptures``.
 
     Parameters
@@ -111,6 +112,9 @@ def visualize_cpd_detection(series, penalty=None, min_size=30,
     zoom_margin : int, optional
         Half-window size around a selected change point for the zoomed views,
         defaulting to ``50``.
+    extra_zoom_ranges : list of tuple(int, int), optional
+        Additional fixed ranges to visualize. Each range is saved next to
+        ``save_path`` with a ``_range{i}`` suffix.
     """
     if rpt is None:
         raise ImportError("ruptures is required for CPD visualization")
@@ -169,6 +173,15 @@ def visualize_cpd_detection(series, penalty=None, min_size=30,
             start = max(global_cp - zoom_margin, 0)
             end = min(global_cp + zoom_margin, len(orig_series))
             zoom_path = f"{base}_top{i}{ext}"
+            visualize_cpd_detection(
+                orig_series, penalty=penalty, min_size=min_size,
+                save_path=zoom_path, zoom_range=(start, end),
+                top_k=None, zoom_margin=zoom_margin)
+
+    if extra_zoom_ranges:
+        base, ext = os.path.splitext(save_path)
+        for i, (start, end) in enumerate(extra_zoom_ranges, 1):
+            zoom_path = f"{base}_range{i}{ext}"
             visualize_cpd_detection(
                 orig_series, penalty=penalty, min_size=min_size,
                 save_path=zoom_path, zoom_range=(start, end),
