@@ -31,15 +31,19 @@ def train_and_test(args: argparse.Namespace) -> None:
                 raise ValueError("z_bank is empty; the model saw no training data")
 
             series = series[:, 0]
+            out_path = os.path.abspath(args.replay_plot)
             plot_replay_vs_series(
                 solver.model,
                 series,
                 start=0,
                 end=len(series),
-                save_path=args.replay_plot,
+                save_path=out_path,
                 ordered=True,
             )
-            print(f"Replay comparison saved to {args.replay_plot}")
+            if os.path.isfile(out_path):
+                print(f"Replay comparison saved to {out_path}")
+            else:
+                print(f"Replay plot failed to save at {out_path}")
         except Exception as exc:
             print(f"Failed to generate replay plot: {exc}")
     args.mode = "test"

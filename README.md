@@ -77,7 +77,8 @@ approach leverages the VAE branch to mitigate concept drift.
 - `--cpd_log_interval`: evaluate and print metrics only after this many CPD
   updates (default `20`).
 - `--replay_plot`: optional path for saving a figure comparing replayed samples
-  with the training data.
+  with the training data. A success message with the absolute location is
+  printed after saving.
 - `--cpd_top_k`: number of zoomed views for CPD visualization (default `3`).
 - `--cpd_extra_ranges`: comma-separated `start:end` pairs for fixed CPD zoom
   windows (default `0:4000`).
