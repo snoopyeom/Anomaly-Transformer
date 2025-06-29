@@ -77,6 +77,8 @@ approach leverages the VAE branch to mitigate concept drift.
 - `--cpd_log_interval`: evaluate and print metrics only after this many CPD
   updates (default `20`).
 - `--cpd_top_k`: number of zoomed views for CPD visualization (default `3`).
+- `--cpd_extra_ranges`: comma-separated `start:end` pairs for fixed CPD zoom
+  windows (default `0:4000`).
 
 After training, the script prints the number of updates triggered by CPD events.
 Install the `ruptures` package (e.g., via `pip install ruptures`) so that these
@@ -118,9 +120,10 @@ qualitatively inspecting continual learning behavior.
   draws change points detected by `ruptures`. When `penalty` is ``None`` a
   heuristic based on series length is used, and `min_size` enforces a minimum
   gap between change points so the plot remains readable. The helper also
-  accepts `zoom_range` to focus on a specific slice of the sequence and a
+  accepts `zoom_range` to focus on a specific slice of the sequence, a
   `top_k` option that automatically creates additional zoomed-in figures around
-  the most significant change points.
+  the most significant change points, and `extra_zoom_ranges` for arbitrary
+  fixed-range views (e.g. `0:4000`).
   dataset loader using t-SNE, saving a scatter plot that compares their
   distributions.
 - `visualize_cpd_detection(series, penalty=20, save_path="cpd_detection.png")`

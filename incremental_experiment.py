@@ -74,10 +74,26 @@ def main():
     )
     parser.add_argument('--cpd_top_k', type=int, default=3,
                         help='number of zoomed views for CPD visualization')
+    parser.add_argument(
+        '--cpd_extra_ranges', type=str, default='0:4000',
+        help='comma-separated start:end pairs for additional CPD zoom views'
+    )
     parser.add_argument('--cpd_log_interval', type=int, default=20,
                         help='log metrics every N CPD updates')
 
+    def _parse_ranges(arg):
+        if not arg:
+            return None
+        pairs = []
+        for part in arg.split(','):
+            if ':' not in part:
+                continue
+            start, end = part.split(':', 1)
+            pairs.append((int(start), int(end)))
+        return pairs or None
+
     args = parser.parse_args()
+    args.cpd_extra_ranges = _parse_ranges(args.cpd_extra_ranges)
 
     os.makedirs(args.model_save_path, exist_ok=True)
 
