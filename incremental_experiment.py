@@ -23,18 +23,23 @@ def train_and_test(args: argparse.Namespace) -> None:
 
     if args.replay_plot:
         try:
-            ds=solver.train_loader.dataset
-            series=getattr(ds, "train", None)
-            if series is not None:
-                series=series[:, 0]
-                plot_replay_vs_series(
-                    solver.model,
-                    series,
-                    start=0,
-                    end=len(series),
-                    save_path=args.replay_plot,
-                    ordered=True,
-                )
+            ds = solver.train_loader.dataset
+            series = getattr(ds, "train", None)
+            if series is None:
+                raise AttributeError("training dataset does not expose 'train'")
+            if not getattr(solver.model, "z_bank", []):
+                raise ValueError("z_bank is empty; the model saw no training data")
+
+            series = series[:, 0]
+            plot_replay_vs_series(
+                solver.model,
+                series,
+                start=0,
+                end=len(series),
+                save_path=args.replay_plot,
+                ordered=True,
+            )
+            print(f"Replay comparison saved to {args.replay_plot}")
         except Exception as exc:
             print(f"Failed to generate replay plot: {exc}")
     args.mode = "test"

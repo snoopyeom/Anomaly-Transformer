@@ -191,7 +191,8 @@ class Solver(object):
             warnings.warn("scikit-learn is required to compute metrics")
             return float('nan'), float('nan')
 
-        criterion = nn.MSELoss(reduce=False)
+        # use the modern argument name to silence PyTorch deprecation warning
+        criterion = nn.MSELoss(reduction="none")
         temperature = 50
 
         # energies on train set
@@ -467,13 +468,14 @@ class Solver(object):
         ckpt_path = self.load_model
         if ckpt_path is None:
             ckpt_path = os.path.join(str(self.model_save_path), str(self.model_tag) + '_checkpoint.pth')
-        self.model.load_state_dict(torch.load(ckpt_path))
+        # load weights only to avoid warnings on newer PyTorch versions
+        self.model.load_state_dict(torch.load(ckpt_path, weights_only=True))
         self.model.eval()
         temperature = 50
 
         print("======================TEST MODE======================")
 
-        criterion = nn.MSELoss(reduce=False)
+        criterion = nn.MSELoss(reduction="none")
 
         # (1) stastic on the train set
         attens_energy = []
