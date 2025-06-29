@@ -4,6 +4,7 @@ import argparse
 import os
 
 from main import main as run_main
+from utils.analysis_tools import plot_replay_vs_series
 
 
 def train_and_test(args: argparse.Namespace) -> None:
@@ -20,6 +21,22 @@ def train_and_test(args: argparse.Namespace) -> None:
         print(
             f"Continual learning - Final F1: {last_f1:.4f}, AUC: {last_auc:.4f}")
 
+    if args.replay_plot:
+        try:
+            ds=solver.train_loader.dataset
+            series=getattr(ds, "train", None)
+            if series is not None:
+                series=series[:, 0]
+                plot_replay_vs_series(
+                    solver.model,
+                    series,
+                    start=0,
+                    end=len(series),
+                    save_path=args.replay_plot,
+                    ordered=True,
+                )
+        except Exception as exc:
+            print(f"Failed to generate replay plot: {exc}")
     args.mode = "test"
     args.load_model = os.path.join(
         args.model_save_path, f"{args.model_tag}_checkpoint.pth")
@@ -80,6 +97,8 @@ def main():
     )
     parser.add_argument('--cpd_log_interval', type=int, default=20,
                         help='log metrics every N CPD updates')
+    parser.add_argument('--replay_plot', type=str, default=None,
+                        help='optional path to save replay vs actual figure')
 
     def _parse_ranges(arg):
         if not arg:

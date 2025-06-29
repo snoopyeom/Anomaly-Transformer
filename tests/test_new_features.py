@@ -55,3 +55,20 @@ def test_decoder_types():
         )
         out, _, _, _ = model(dummy)
         assert out.shape == (1, 4, 1)
+
+
+def test_generate_replay_sequence():
+    model = AnomalyTransformerWithVAE(
+        win_size=4,
+        enc_in=1,
+        d_model=4,
+        n_heads=1,
+        e_layers=1,
+        d_ff=4,
+        latent_dim=2,
+    )
+    dummy = torch.zeros(1, 4, 1)
+    for _ in range(3):
+        model(dummy)
+    seq = model.generate_replay_sequence(deterministic=True)
+    assert seq.shape[0] >= 3

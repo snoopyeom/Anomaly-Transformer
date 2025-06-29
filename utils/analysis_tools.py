@@ -189,7 +189,7 @@ def visualize_cpd_detection(series, penalty=None, min_size=30,
 
 
 def plot_replay_vs_series(model, series, *, start=0, end=4000,
-                          save_path="replay_vs_series.png"):
+                          save_path="replay_vs_series.png", ordered=False):
     """Compare replay-generated samples with the original series.
 
     Parameters
@@ -204,6 +204,9 @@ def plot_replay_vs_series(model, series, *, start=0, end=4000,
         End index of the slice to plot.
     save_path : str, optional
         Location where the figure will be saved.
+    ordered : bool, optional
+        When ``True`` use stored latents in chronological order instead of
+        random sampling.
     """
     if not model.z_bank:
         raise ValueError("z_bank is empty; train the model before calling")
@@ -213,7 +216,12 @@ def plot_replay_vs_series(model, series, *, start=0, end=4000,
     end = min(len(series), end)
 
     n_samples = end - start
-    replay = model.generate_replay_samples(n_samples)
+    if ordered:
+        replay = model.generate_replay_sequence(deterministic=True)
+        if replay is not None:
+            replay = replay[:n_samples]
+    else:
+        replay = model.generate_replay_samples(n_samples)
     if replay is None:
         raise ValueError("Not enough entries in z_bank for replay")
     replay = replay.detach().cpu().numpy()[:, :, 0]
