@@ -39,7 +39,7 @@ if __name__ == '__main__':
     parser.add_argument('--train_start', type=float, default=0.0)
     parser.add_argument('--train_end', type=float, default=1.0)
     parser.add_argument('--model_type', type=str, default='transformer',
-                        choices=['transformer', 'transformer_vae'])
+                        choices=['transformer', 'transformer_ae'])
     parser.add_argument('--latent_dim', type=int, default=16)
     parser.add_argument('--beta', type=float, default=1.0)
     parser.add_argument('--replay_horizon', type=int, default=None)

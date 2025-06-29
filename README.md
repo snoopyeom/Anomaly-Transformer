@@ -68,8 +68,8 @@ approach leverages the VAE branch to mitigate concept drift.
 - `--anomaly_ratio`: anomaly ratio in training set (default `1.0`).
 - `--model_save_path`: directory for checkpoints and results (default
   `checkpoints`).
-- `--model_type`: `transformer` or `transformer_vae` (default
-  `transformer_vae`).
+- `--model_type`: `transformer` or `transformer_ae` (default
+  `transformer_ae`).
 - `--cpd_penalty`: penalty used by `ruptures` for change point detection
   (default `20`). A larger value results in fewer detected drifts.
 - `--replay_horizon`: keep latent vectors for at most this many training
@@ -159,7 +159,7 @@ qualitatively inspecting continual learning behavior.
 Directories in the provided `save_path` are created automatically, so you can
 use paths such as `outputs/z_bank_tsne.png` without pre-creating the folder.
 
-When using the VAE-based model (`--model_type transformer_vae`), these
+When using the AE-based model (`--model_type transformer_ae`), these
 visualizations are generated automatically at the end of training and saved
 alongside the metric plots.
 

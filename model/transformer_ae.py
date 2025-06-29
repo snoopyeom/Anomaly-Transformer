@@ -84,14 +84,13 @@ class AttentionDecoder(nn.Module):
 
 
 
-class AnomalyTransformerWithVAE(nn.Module):
-    """Anomaly Transformer augmented with a VAE branch."""
+class AnomalyTransformerAE(nn.Module):
+    """Anomaly Transformer using a deterministic autoencoder branch."""
 
     def __init__(self, win_size, enc_in, d_model=512, n_heads=8, e_layers=3,
                  d_ff=512, dropout=0.0, activation='gelu', latent_dim=16,
-                 beta: float = 1.0, replay_size: int = 1000,
+                 replay_size: int = 1000,
                  replay_horizon: int | None = None,
-                 store_mu: bool = False,
                  freeze_after: int | None = None,
                  ema_decay: float | None = None,
                  decoder_type: str = 'mlp'):
@@ -99,12 +98,10 @@ class AnomalyTransformerWithVAE(nn.Module):
         super().__init__()
         self.win_size = win_size
         self.enc_in = enc_in
-        self.beta = beta
 
         self.replay_size = replay_size
         self.replay_horizon = replay_horizon
         self.current_step = 0
-        self.store_mu = store_mu
         self.freeze_after = freeze_after
         self.ema_decay = ema_decay
         self.encoder_frozen = False
@@ -130,8 +127,8 @@ class AnomalyTransformerWithVAE(nn.Module):
         )
 
         # VAE components
-        self.fc_mu = nn.Linear(d_model, latent_dim)
-        self.fc_logvar = nn.Linear(d_model, latent_dim)
+        self.fc_latent = nn.Linear(d_model, latent_dim)
+        
         if decoder_type == 'mlp':
             self.decoder = MLPDecoder(latent_dim, d_model, win_size, enc_in)
         elif decoder_type == 'rnn':
@@ -143,8 +140,6 @@ class AnomalyTransformerWithVAE(nn.Module):
 
         # store tuples of (input, latent_vector, step) for experience replay
         self.z_bank = []
-        self.last_mu = None
-        self.last_logvar = None
 
         if self.ema_decay is not None:
             self.encoder_ema = copy.deepcopy(self.encoder)
@@ -193,47 +188,21 @@ class AnomalyTransformerWithVAE(nn.Module):
         enc = self.embedding(x)
         enc, series, prior, _ = self.encoder(enc)
         pooled = enc.mean(dim=1)
-        mu = self.fc_mu(pooled)
-        logvar = self.fc_logvar(pooled)
-        std = torch.exp(0.5 * logvar)
-        eps = torch.randn_like(std)
-        z = mu + eps * std
+        z = self.fc_latent(pooled)
         recon = self.decoder(z)
 
         # advance time step and store (input, latent) pairs for later replay
         self.current_step += 1
-        if self.store_mu:
-            for x_i, mu_i, logvar_i in zip(x, mu, logvar):
-                self.z_bank.append(
-                    (x_i.detach().cpu(), mu_i.detach().cpu(), logvar_i.detach().cpu(), self.current_step)
-                )
-        else:
-            for x_i, vec in zip(x, z):
-                self.z_bank.append((x_i.detach().cpu(), vec.detach().cpu(), self.current_step))
+        for x_i, vec in zip(x, z):
+            self.z_bank.append((x_i.detach().cpu(), vec.detach().cpu(), self.current_step))
         self._purge_z_bank()
-
-
-        self.last_mu = mu
-        self.last_logvar = logvar
 
         self.maybe_freeze_encoder()
 
         return recon, series, prior, z
 
     def loss_function(self, recon_x, x):
-        mse = F.mse_loss(recon_x, x)
-        kl = -0.5 * torch.sum(
-            1 + self.last_logvar - self.last_mu.pow(2) - self.last_logvar.exp(),
-            dim=1)
-        kl = torch.mean(kl)
-        return mse + self.beta * kl
-
-    def kl_divergence(self):
-        """Return KL divergence for the last forward pass."""
-        kl = -0.5 * torch.sum(
-            1 + self.last_logvar - self.last_mu.pow(2) - self.last_logvar.exp(),
-            dim=1)
-        return torch.mean(kl)
+        return F.mse_loss(recon_x, x)
 
     def generate_replay_samples(self, n, deterministic: bool = False):
         """Generate reconstructions from stored latent vectors."""
@@ -242,17 +211,7 @@ class AnomalyTransformerWithVAE(nn.Module):
             return None
         idx = np.random.choice(len(self.z_bank), size=min(n, len(self.z_bank)), replace=False)
         device = next(self.parameters()).device
-        if self.store_mu:
-            mus = torch.stack([self.z_bank[i][1] for i in idx]).to(device)
-            logvars = torch.stack([self.z_bank[i][2] for i in idx]).to(device)
-            if deterministic:
-                z = mus
-            else:
-                std = torch.exp(0.5 * logvars)
-                eps = torch.randn_like(std)
-                z = mus + eps * std
-        else:
-            z = torch.stack([self.z_bank[i][1] for i in idx]).to(device)
+        z = torch.stack([self.z_bank[i][1] for i in idx]).to(device)
         with torch.no_grad():
             recon = self.decoder(z)
         return recon
@@ -264,17 +223,7 @@ class AnomalyTransformerWithVAE(nn.Module):
             return None
         ordered = sorted(self.z_bank, key=lambda t: t[-1])
         device = next(self.parameters()).device
-        if self.store_mu:
-            mus = torch.stack([t[1] for t in ordered]).to(device)
-            logvars = torch.stack([t[2] for t in ordered]).to(device)
-            if deterministic:
-                z = mus
-            else:
-                std = torch.exp(0.5 * logvars)
-                eps = torch.randn_like(std)
-                z = mus + eps * std
-        else:
-            z = torch.stack([t[1] for t in ordered]).to(device)
+        z = torch.stack([t[1] for t in ordered]).to(device)
         with torch.no_grad():
             recon = self.decoder(z)
         return recon
@@ -293,7 +242,7 @@ def detect_drift_with_ruptures(window: np.ndarray, pen: int = 20, min_gap: int =
 
 
 def train_model_with_replay(
-    model: AnomalyTransformerWithVAE,
+    model: AnomalyTransformerAE,
     optimizer: torch.optim.Optimizer,
     current_data: torch.Tensor,
     cpd_penalty: int = 20,

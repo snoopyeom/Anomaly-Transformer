@@ -30,7 +30,7 @@ from utils.analysis_tools import (
     plot_z_bank_tsne,
     plot_z_bank_pca,
 )
-from model.transformer_vae import AnomalyTransformerWithVAE
+from model.transformer_ae import AnomalyTransformerAE
 
 
 def create_synthetic_series(n_steps=400):
@@ -51,7 +51,7 @@ def main():
     )
 
     # minimal model to generate latent vectors
-    model = AnomalyTransformerWithVAE(
+    model = AnomalyTransformerAE(
         win_size=20,
         enc_in=1,
         d_model=8,

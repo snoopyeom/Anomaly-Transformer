@@ -4,12 +4,12 @@ np = pytest.importorskip("numpy")
 torch = pytest.importorskip("torch")
 
 from utils.analysis_tools import plot_replay_vs_series
-from model.transformer_vae import AnomalyTransformerWithVAE
+from model.transformer_ae import AnomalyTransformerAE
 
 
 def test_plot_replay_vs_series(tmp_path):
     series = np.sin(np.linspace(0, 3.14, 40))
-    model = AnomalyTransformerWithVAE(
+    model = AnomalyTransformerAE(
         win_size=10,
         enc_in=1,
         d_model=4,

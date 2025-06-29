@@ -3,11 +3,11 @@ import pytest
 # Skip the test if PyTorch is unavailable
 torch = pytest.importorskip("torch")
 
-from model.transformer_vae import AnomalyTransformerWithVAE
+from model.transformer_ae import AnomalyTransformerAE
 
 
 def test_replay_horizon_pruning():
-    model = AnomalyTransformerWithVAE(
+    model = AnomalyTransformerAE(
         win_size=4,
         enc_in=1,
         d_model=4,

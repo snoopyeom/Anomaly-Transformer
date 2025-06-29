@@ -194,7 +194,7 @@ def plot_replay_vs_series(model, series, *, start=0, end=4000,
 
     Parameters
     ----------
-    model : AnomalyTransformerWithVAE
+    model : AnomalyTransformerAE
         Model containing a populated ``z_bank``.
     series : array-like
         1D sequence used during training.
