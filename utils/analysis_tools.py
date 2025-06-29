@@ -1,23 +1,63 @@
 import os
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.manifold import TSNE
-from sklearn.decomposition import PCA
-import torch
+
+try:  # optional heavy deps are loaded lazily
+    import numpy as np  # type: ignore
+except Exception:  # pragma: no cover - handled at runtime
+    np = None  # type: ignore
 
 try:
-    import umap
-except ImportError:  # umap-learn might not be installed
-    umap = None
+    import matplotlib.pyplot as plt  # type: ignore
+except Exception:  # pragma: no cover - handled at runtime
+    plt = None  # type: ignore
 
 try:
-    import ruptures as rpt
-except ImportError:  # ruptures might not be installed
-    rpt = None
+    from sklearn.manifold import TSNE  # type: ignore
+    from sklearn.decomposition import PCA  # type: ignore
+except Exception:  # pragma: no cover - handled at runtime
+    TSNE = PCA = None  # type: ignore
+
+try:
+    import torch  # type: ignore
+except Exception:  # pragma: no cover - handled at runtime
+    torch = None  # type: ignore
+
+try:
+    import umap  # type: ignore
+except Exception:  # pragma: no cover - handled at runtime
+    umap = None  # type: ignore
+
+try:
+    import ruptures as rpt  # type: ignore
+except Exception:  # pragma: no cover - handled at runtime
+    rpt = None  # type: ignore
+
+
+def _ensure_deps(extra=None):
+    """Raise ``ImportError`` if core dependencies are missing."""
+    missing = []
+    if np is None:
+        missing.append("numpy")
+    if plt is None:
+        missing.append("matplotlib")
+    if TSNE is None:
+        missing.append("scikit-learn")
+    if torch is None:
+        missing.append("torch")
+    if extra:
+        for name, mod in extra.items():
+            if mod is None:
+                missing.append(name)
+    if missing:
+        raise ImportError(
+            "Missing required packages: "
+            + ", ".join(missing)
+            + ". Install them with 'pip install -r requirements-demo.txt'"
+        )
 
 
 def _collect_latents(model, loader, n_samples):
     """Return original and replay latent vectors."""
+    _ensure_deps()
     device = next(model.parameters()).device
     orig_latents = []
     seen = 0
@@ -52,51 +92,74 @@ def _collect_latents(model, loader, n_samples):
 
 
 def _scatter_projection(orig_latents, replay_latents, reduced, title, save_path):
+    _ensure_deps()
     count_orig = orig_latents.shape[0]
     plt.figure()
-    plt.scatter(reduced[:count_orig, 0], reduced[:count_orig, 1], s=10, label="Original")
-    plt.scatter(reduced[count_orig:, 0], reduced[count_orig:, 1], s=10, label="Replay", alpha=0.7)
+    plt.scatter(
+        reduced[:count_orig, 0], reduced[:count_orig, 1], s=10, label="Original"
+    )
+    plt.scatter(
+        reduced[count_orig:, 0],
+        reduced[count_orig:, 1],
+        s=10,
+        label="Replay",
+        alpha=0.7,
+    )
     plt.xlabel("Dim 1")
     plt.ylabel("Dim 2")
     plt.title(title)
     plt.legend()
     plt.tight_layout()
-    os.makedirs(os.path.dirname(save_path) or '.', exist_ok=True)
+    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
     plt.savefig(save_path)
     plt.close()
 
 
 def plot_z_bank_tsne(model, loader, n_samples=500, save_path="z_bank_tsne.png"):
     """Visualize latent vectors stored in ``z_bank`` with t-SNE."""
+    _ensure_deps()
     orig_latents, replay_latents = _collect_latents(model, loader, n_samples)
     combined = np.concatenate([orig_latents, replay_latents], axis=0)
     reduced = TSNE(n_components=2, random_state=0).fit_transform(combined)
-    _scatter_projection(orig_latents, replay_latents, reduced, "t-SNE of Latent Vectors", save_path)
+    _scatter_projection(
+        orig_latents, replay_latents, reduced, "t-SNE of Latent Vectors", save_path
+    )
 
 
 def plot_z_bank_pca(model, loader, n_samples=500, save_path="z_bank_pca.png"):
     """Visualize latent vectors stored in ``z_bank`` with PCA."""
+    _ensure_deps()
     orig_latents, replay_latents = _collect_latents(model, loader, n_samples)
     combined = np.concatenate([orig_latents, replay_latents], axis=0)
     reduced = PCA(n_components=2).fit_transform(combined)
-    _scatter_projection(orig_latents, replay_latents, reduced, "PCA of Latent Vectors", save_path)
+    _scatter_projection(
+        orig_latents, replay_latents, reduced, "PCA of Latent Vectors", save_path
+    )
 
 
 def plot_z_bank_umap(model, loader, n_samples=500, save_path="z_bank_umap.png"):
     """Visualize latent vectors stored in ``z_bank`` with UMAP."""
-    if umap is None:
-        raise ImportError("umap-learn is required for UMAP visualization")
+    _ensure_deps({"umap-learn": umap})
     orig_latents, replay_latents = _collect_latents(model, loader, n_samples)
     combined = np.concatenate([orig_latents, replay_latents], axis=0)
     reducer = umap.UMAP(n_components=2, random_state=0)
     reduced = reducer.fit_transform(combined)
-    _scatter_projection(orig_latents, replay_latents, reduced, "UMAP of Latent Vectors", save_path)
+    _scatter_projection(
+        orig_latents, replay_latents, reduced, "UMAP of Latent Vectors", save_path
+    )
 
 
-def visualize_cpd_detection(series, penalty=None, min_size=30,
-                            save_path="cpd_detection.png", *,
-                            zoom_range=None, top_k=None, zoom_margin=50,
-                            extra_zoom_ranges=None):
+def visualize_cpd_detection(
+    series,
+    penalty=None,
+    min_size=30,
+    save_path="cpd_detection.png",
+    *,
+    zoom_range=None,
+    top_k=None,
+    zoom_margin=50,
+    extra_zoom_ranges=None,
+):
     """Plot change-point locations predicted by ``ruptures``.
 
     Parameters
@@ -123,8 +186,7 @@ def visualize_cpd_detection(series, penalty=None, min_size=30,
         Additional fixed ranges to visualize. Each range is saved next to
         ``save_path`` with a ``_range{i}`` suffix.
     """
-    if rpt is None:
-        raise ImportError("ruptures is required for CPD visualization")
+    _ensure_deps({"ruptures": rpt})
 
     series = np.asarray(series)
     orig_series = series
@@ -158,7 +220,7 @@ def visualize_cpd_detection(series, penalty=None, min_size=30,
     plt.xlabel("Time")
     plt.title("Change Point Detection")
     plt.tight_layout()
-    os.makedirs(os.path.dirname(save_path) or '.', exist_ok=True)
+    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
     plt.savefig(save_path)
     plt.close()
 
@@ -181,22 +243,33 @@ def visualize_cpd_detection(series, penalty=None, min_size=30,
             end = min(global_cp + zoom_margin, len(orig_series))
             zoom_path = f"{base}_top{i}{ext}"
             visualize_cpd_detection(
-                orig_series, penalty=penalty, min_size=min_size,
-                save_path=zoom_path, zoom_range=(start, end),
-                top_k=None, zoom_margin=zoom_margin)
+                orig_series,
+                penalty=penalty,
+                min_size=min_size,
+                save_path=zoom_path,
+                zoom_range=(start, end),
+                top_k=None,
+                zoom_margin=zoom_margin,
+            )
 
     if extra_zoom_ranges:
         base, ext = os.path.splitext(save_path)
         for i, (start, end) in enumerate(extra_zoom_ranges, 1):
             zoom_path = f"{base}_range{i}{ext}"
             visualize_cpd_detection(
-                orig_series, penalty=penalty, min_size=min_size,
-                save_path=zoom_path, zoom_range=(start, end),
-                top_k=None, zoom_margin=zoom_margin)
+                orig_series,
+                penalty=penalty,
+                min_size=min_size,
+                save_path=zoom_path,
+                zoom_range=(start, end),
+                top_k=None,
+                zoom_margin=zoom_margin,
+            )
 
 
-def plot_replay_vs_series(model, series, *, start=0, end=4000,
-                          save_path="replay_vs_series.png", ordered=False):
+def plot_replay_vs_series(
+    model, series, *, start=0, end=4000, save_path="replay_vs_series.png", ordered=False
+):
     """Compare replay-generated samples with the original series.
 
     Parameters
@@ -215,6 +288,7 @@ def plot_replay_vs_series(model, series, *, start=0, end=4000,
         When ``True`` use stored latents in chronological order instead of
         random sampling.
     """
+    _ensure_deps()
     if not model.z_bank:
         raise ValueError("z_bank is empty; train the model before calling")
 
@@ -252,15 +326,15 @@ def plot_replay_vs_series(model, series, *, start=0, end=4000,
     counts[counts == 0] = 1
     recon /= counts
 
-    actual = series[start:start + max_len]
+    actual = series[start : start + max_len]
     x = np.arange(start, start + len(actual))
     plt.figure()
     plt.plot(x, actual, label="Actual")
-    plt.plot(x[:len(recon)], recon, label="Replay", alpha=0.7)
+    plt.plot(x[: len(recon)], recon, label="Replay", alpha=0.7)
     plt.xlabel("Time")
     plt.title("Replay vs Actual")
     plt.legend()
     plt.tight_layout()
-    os.makedirs(os.path.dirname(save_path) or '.', exist_ok=True)
+    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
     plt.savefig(save_path)
     plt.close()
