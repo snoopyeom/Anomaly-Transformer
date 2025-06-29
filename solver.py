@@ -15,7 +15,6 @@ from utils.analysis_tools import (
     plot_z_bank_tsne,
     plot_z_bank_pca,
     plot_z_bank_umap,
-    visualize_cpd_detection,
 )
 import matplotlib.pyplot as plt
 import warnings
@@ -428,25 +427,25 @@ class Solver(object):
             print(f"CPD triggered updates: {self.update_count}")
             if self.history:
                 counts, f1s, aucs = zip(*self.history)
-                plt.figure()
-                plt.plot(counts, f1s, marker='o', linestyle='-')
-                plt.xlabel('CPD Updates')
-                plt.ylabel('F1 Score')
-                plt.title('F1 Score over Updates')
-                plt.grid(True)
-                plt.tight_layout()
-                plt.savefig(os.path.join(path, 'f1_score.png'))
-                plt.close()
+                fig, ax = plt.subplots()
+                ax.plot(counts, f1s, marker='o', linestyle='-')
+                ax.set_xlabel('CPD Updates')
+                ax.set_ylabel('F1 Score')
+                ax.set_title('F1 Score over Updates')
+                ax.grid(True)
+                fig.tight_layout()
+                fig.savefig(os.path.join(path, 'f1_score.png'))
+                plt.close(fig)
 
-                plt.figure()
-                plt.plot(counts, aucs, marker='x', linestyle='-', color='tab:red')
-                plt.xlabel('CPD Updates')
-                plt.ylabel('ROC AUC')
-                plt.title('ROC AUC over Updates')
-                plt.grid(True)
-                plt.tight_layout()
-                plt.savefig(os.path.join(path, 'roc_auc.png'))
-                plt.close()
+                fig, ax = plt.subplots()
+                ax.plot(counts, aucs, marker='x', linestyle='-', color='tab:red')
+                ax.set_xlabel('CPD Updates')
+                ax.set_ylabel('ROC AUC')
+                ax.set_title('ROC AUC over Updates')
+                ax.grid(True)
+                fig.tight_layout()
+                fig.savefig(os.path.join(path, 'roc_auc.png'))
+                plt.close(fig)
 
                 # additional diagnostics
                 try:
@@ -459,17 +458,9 @@ class Solver(object):
                 except Exception as e:
                     warnings.warn(f"Failed to create latent plots: {e}")
 
-                try:
-                    series = self.vali_loader.dataset.val[:, 0]
-                    cpd_path = os.path.join(path, 'cpd_detection.png')
-                    visualize_cpd_detection(
-                        series,
-                        save_path=cpd_path,
-                        top_k=getattr(self, 'cpd_top_k', None),
-                        extra_zoom_ranges=getattr(self, 'cpd_extra_ranges', None),
-                    )
-                except Exception as e:
-                    warnings.warn(f"Failed to visualize CPD: {e}")
+                # Visualization of detected change points over the entire
+                # validation series produced a very cluttered figure. Omit the
+                # global view and rely on optional zoomed-in plots instead.
 
     def test(self):
         ckpt_path = self.load_model
