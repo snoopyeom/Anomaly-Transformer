@@ -298,6 +298,8 @@ def train_model_with_replay(
     current_data: torch.Tensor,
     cpd_penalty: int = 20,
     min_gap: int = 30,
+    replay_consistency_weight: float = 0.0,
+    max_replay_samples: int = 32,
 ) -> tuple[float, bool]:
     """Train model with replay based on detected concept drift."""
     model.train()
@@ -322,6 +324,18 @@ def train_model_with_replay(
         warnings.warn("ruptures not installed; CPD updates will not run")
     recon, _, _, _ = model(data)
     loss = model.loss_function(recon, data)
+    if replay_consistency_weight > 0 and model.z_bank:
+        device = current_data.device
+        idx = np.random.choice(
+            len(model.z_bank),
+            size=min(max_replay_samples, len(model.z_bank)),
+            replace=False,
+        )
+        latents = torch.stack([model.z_bank[i][1] for i in idx]).to(device)
+        targets = torch.stack([model.z_bank[i][0] for i in idx]).to(device)
+        recon_bank = model.decoder(latents)
+        bank_loss = F.mse_loss(recon_bank, targets)
+        loss = loss + replay_consistency_weight * bank_loss
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
