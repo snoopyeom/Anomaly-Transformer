@@ -29,6 +29,6 @@ def test_plot_replay_vs_series(tmp_path):
         for batch, _ in loader:
             model(batch)
     out = tmp_path / "replay.png"
-    plot_replay_vs_series(model, series, end=20, save_path=str(out))
+    plot_replay_vs_series(model, series, end=20, save_path=str(out), ordered=True)
     assert out.exists() and out.stat().st_size > 0
 

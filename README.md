@@ -76,6 +76,8 @@ approach leverages the VAE branch to mitigate concept drift.
   `30`).
 - `--cpd_log_interval`: evaluate and print metrics only after this many CPD
   updates (default `20`).
+- `--replay_plot`: optional path for saving a figure comparing replayed samples
+  with the training data.
 - `--cpd_top_k`: number of zoomed views for CPD visualization (default `3`).
 - `--cpd_extra_ranges`: comma-separated `start:end` pairs for fixed CPD zoom
   windows (default `0:4000`).
@@ -146,8 +148,6 @@ qualitatively inspecting continual learning behavior.
   missing.
   and then run the demo script.
 
-- Another example, `scripts/visualize_replay_vs_data.py`, compares replayed
-  normal sequences with the original series and saves `replay_vs_actual.png`.
 
 Directories in the provided `save_path` are created automatically, so you can
 use paths such as `outputs/z_bank_tsne.png` without pre-creating the folder.

@@ -254,6 +254,28 @@ class AnomalyTransformerWithVAE(nn.Module):
             recon = self.decoder(z)
         return recon
 
+    def generate_replay_sequence(self, deterministic: bool = False):
+        """Decode all stored latents in chronological order."""
+        self._purge_z_bank()
+        if len(self.z_bank) == 0:
+            return None
+        ordered = sorted(self.z_bank, key=lambda t: t[-1])
+        device = next(self.parameters()).device
+        if self.store_mu:
+            mus = torch.stack([t[0] for t in ordered]).to(device)
+            logvars = torch.stack([t[1] for t in ordered]).to(device)
+            if deterministic:
+                z = mus
+            else:
+                std = torch.exp(0.5 * logvars)
+                eps = torch.randn_like(std)
+                z = mus + eps * std
+        else:
+            z = torch.stack([t[0] for t in ordered]).to(device)
+        with torch.no_grad():
+            recon = self.decoder(z)
+        return recon
+
 
 def detect_drift_with_ruptures(window: np.ndarray, pen: int = 20, min_gap: int = 30) -> bool:
     if rpt is None:
