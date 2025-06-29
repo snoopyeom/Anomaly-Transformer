@@ -8,7 +8,7 @@ import copy
 
 from .AnomalyTransformer import EncoderLayer, Encoder
 from .attn import AnomalyAttention, AttentionLayer
-from .embed import DataEmbedding
+from .embed import DataEmbedding, PositionalEmbedding
 
 from utils.utils import my_kl_loss, filter_short_segments
 
@@ -83,6 +83,46 @@ class AttentionDecoder(nn.Module):
         return self.out(out)
 
 
+class ConditionalTransformerDecoder(nn.Module):
+    """Transformer decoder with optional conditioning on recent input."""
+
+    def __init__(
+        self,
+        latent_dim: int,
+        d_model: int,
+        win_size: int,
+        enc_in: int,
+        n_heads: int,
+        d_ff: int,
+        cond_len: int = 5,
+    ) -> None:
+        super().__init__()
+        layer = nn.TransformerDecoderLayer(
+            d_model=d_model,
+            nhead=n_heads,
+            dim_feedforward=d_ff,
+            batch_first=True,
+        )
+        self.decoder = nn.TransformerDecoder(layer, num_layers=1)
+        self.lat_proj = nn.Linear(latent_dim, d_model)
+        self.cond_embed = DataEmbedding(enc_in, d_model, dropout=0.0)
+        self.out = nn.Linear(d_model, enc_in)
+        self.pos_embed = PositionalEmbedding(d_model)
+        self.win_size = win_size
+        self.cond_len = cond_len
+        self.requires_condition = True
+
+    def forward(self, z: torch.Tensor, cond: torch.Tensor | None = None) -> torch.Tensor:
+        tgt = self.lat_proj(z).unsqueeze(1).repeat(1, self.win_size, 1)
+        tgt = tgt + self.pos_embed(tgt)
+        if cond is not None:
+            memory = self.cond_embed(cond)
+        else:
+            memory = torch.zeros(z.size(0), 1, tgt.size(-1), device=z.device)
+        out = self.decoder(tgt, memory)
+        return self.out(out)
+
+
 
 class AnomalyTransformerAE(nn.Module):
     """Anomaly Transformer using a deterministic autoencoder branch."""
@@ -93,7 +133,8 @@ class AnomalyTransformerAE(nn.Module):
                  replay_horizon: int | None = None,
                  freeze_after: int | None = None,
                  ema_decay: float | None = None,
-                 decoder_type: str = 'mlp'):
+                 decoder_type: str = 'mlp',
+                 cond_len: int = 5):
 
         super().__init__()
         self.win_size = win_size
@@ -135,6 +176,16 @@ class AnomalyTransformerAE(nn.Module):
             self.decoder = RNNDecoder(latent_dim, d_model, win_size, enc_in)
         elif decoder_type == 'attention':
             self.decoder = AttentionDecoder(latent_dim, d_model, win_size, enc_in, n_heads, d_ff)
+        elif decoder_type == 'conditional':
+            self.decoder = ConditionalTransformerDecoder(
+                latent_dim,
+                d_model,
+                win_size,
+                enc_in,
+                n_heads,
+                d_ff,
+                cond_len=cond_len,
+            )
         else:
             raise ValueError(f"Unknown decoder_type: {decoder_type}")
 
@@ -189,7 +240,11 @@ class AnomalyTransformerAE(nn.Module):
         enc, series, prior, _ = self.encoder(enc)
         pooled = enc.mean(dim=1)
         z = self.fc_latent(pooled)
-        recon = self.decoder(z)
+        if getattr(self.decoder, "requires_condition", False):
+            cond = x[:, -self.decoder.cond_len :]
+            recon = self.decoder(z, cond)
+        else:
+            recon = self.decoder(z)
 
         # advance time step and store (input, latent) pairs for later replay
         self.current_step += 1
@@ -201,20 +256,85 @@ class AnomalyTransformerAE(nn.Module):
 
         return recon, series, prior, z
 
-    def loss_function(self, recon_x, x):
-        return F.mse_loss(recon_x, x)
+    def loss_function(self, recon_x, x, weights: torch.Tensor | None = None):
+        loss = F.mse_loss(recon_x, x, reduction="none")
+        loss = loss.mean(dim=(1, 2))
+        if weights is not None:
+            weights = weights / weights.mean()
+            loss = loss * weights
+        return loss.mean()
 
-    def generate_replay_samples(self, n, deterministic: bool = False):
-        """Generate reconstructions from stored latent vectors."""
+    def generate_replay_samples(
+        self,
+        n: int,
+        deterministic: bool = False,
+        current_z: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor] | torch.Tensor | None:
+        """Return replay reconstructions and optional weights."""
         self._purge_z_bank()
         if len(self.z_bank) == 0:
             return None
-        idx = np.random.choice(len(self.z_bank), size=min(n, len(self.z_bank)), replace=False)
         device = next(self.parameters()).device
-        z = torch.stack([self.z_bank[i][1] for i in idx]).to(device)
+        bank_z = torch.stack([item[1] for item in self.z_bank]).to(device)
+        if current_z is None:
+            idx = np.random.choice(len(self.z_bank), size=min(n, len(self.z_bank)), replace=False)
+            z = bank_z[idx]
+            with torch.no_grad():
+                if getattr(self.decoder, "requires_condition", False):
+                    cond = torch.stack([self.z_bank[i][0] for i in idx]).to(device)[:, -self.decoder.cond_len :]
+                    recon = self.decoder(z, cond)
+                else:
+                    recon = self.decoder(z)
+            return recon
+
+        ref = current_z.mean(dim=0)
+        sims = F.cosine_similarity(bank_z, ref.unsqueeze(0), dim=1)
+        order = torch.argsort(sims, descending=True)
+        top_k = order[: min(len(order), n * 5)]
+        cand_z = bank_z[top_k]
+        cand_x = torch.stack([self.z_bank[i][0] for i in top_k]).to(device)
         with torch.no_grad():
-            recon = self.decoder(z)
-        return recon
+            if getattr(self.decoder, "requires_condition", False):
+                cond = cand_x[:, -self.decoder.cond_len :]
+                recon = self.decoder(cand_z, cond)
+            else:
+                recon = self.decoder(cand_z)
+            losses = F.mse_loss(recon, cand_x, reduction="none").mean(dim=(1, 2))
+        baseline = losses.mean().detach()
+
+        selected = []
+        selected_weights = []
+        for idx in top_k:
+            if len(selected) >= n:
+                break
+            candidate = bank_z[idx]
+            if selected:
+                sims_sel = F.cosine_similarity(
+                    candidate.unsqueeze(0), bank_z[selected], dim=1
+                )
+                if sims_sel.max() > 0.95:
+                    continue
+            selected.append(idx)
+            selected_weights.append(losses[(top_k == idx).nonzero(as_tuple=True)[0]].item())
+        if len(selected) < n:
+            remaining = [i.item() for i in order if i not in selected]
+            for idx in remaining:
+                if len(selected) == n:
+                    break
+                selected.append(idx)
+                selected_weights.append(losses[(top_k == idx).nonzero(as_tuple=True)[0]].item() if idx in top_k else baseline.item())
+
+        z = bank_z[selected]
+        stored_x = torch.stack([self.z_bank[i][0] for i in selected]).to(device)
+        with torch.no_grad():
+            if getattr(self.decoder, "requires_condition", False):
+                cond = stored_x[:, -self.decoder.cond_len :]
+                recon = self.decoder(z, cond)
+            else:
+                recon = self.decoder(z)
+        weights = torch.tensor(selected_weights, device=device)
+        weights = weights / (baseline + 1e-6)
+        return recon, weights
 
     def generate_replay_sequence(self, deterministic: bool = False):
         """Decode all stored latents in chronological order."""
@@ -253,6 +373,7 @@ def train_model_with_replay(
     """Train model with replay based on detected concept drift."""
     model.train()
     data = current_data
+    weights = torch.ones(len(current_data), device=current_data.device)
     drift_detected = False
     if rpt is not None:
         try:
@@ -266,13 +387,20 @@ def train_model_with_replay(
             drift = False
         if drift:
             drift_detected = True
-            replay = model.generate_replay_samples(len(current_data))
+            with torch.no_grad():
+                enc = model.embedding(current_data)
+                enc, _, _, _ = model.encoder(enc)
+                pooled = enc.mean(dim=1)
+                z_curr = model.fc_latent(pooled)
+            replay = model.generate_replay_samples(len(current_data), current_z=z_curr)
             if replay is not None:
-                data = torch.cat([current_data, replay], dim=0)
+                replay_samples, replay_weights = replay
+                data = torch.cat([current_data, replay_samples], dim=0)
+                weights = torch.cat([weights, replay_weights.to(current_data.device)])
     else:
         warnings.warn("ruptures not installed; CPD updates will not run")
     recon, _, _, _ = model(data)
-    loss = model.loss_function(recon, data)
+    loss = model.loss_function(recon, data, weights=weights)
     if replay_consistency_weight > 0 and model.z_bank:
         device = current_data.device
         idx = np.random.choice(
