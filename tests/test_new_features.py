@@ -1,6 +1,7 @@
 import pytest
 
 torch = pytest.importorskip("torch")
+F = torch.nn.functional
 
 from model.transformer_vae import AnomalyTransformerWithVAE, train_model_with_replay
 
@@ -87,3 +88,29 @@ def test_z_bank_stores_x():
     dummy = torch.ones(1, 4, 1)
     model(dummy)
     assert torch.equal(model.z_bank[0][0], dummy[0])
+
+
+def test_replay_consistency_loss():
+    model = AnomalyTransformerWithVAE(
+        win_size=4,
+        enc_in=1,
+        d_model=4,
+        n_heads=1,
+        e_layers=1,
+        d_ff=4,
+        latent_dim=2,
+    )
+    opt = torch.optim.Adam(model.parameters(), lr=1e-2)
+    dummy = torch.ones(1, 4, 1)
+    model(dummy)  # populate z_bank
+    before = model.decoder(model.z_bank[0][1].unsqueeze(0)).detach()
+    train_model_with_replay(
+        model,
+        opt,
+        dummy,
+        replay_consistency_weight=1.0,
+        cpd_penalty=0,
+    )
+    after = model.decoder(model.z_bank[0][1].unsqueeze(0))
+    target = model.z_bank[0][0].unsqueeze(0)
+    assert F.mse_loss(after, target) < F.mse_loss(before, target)
