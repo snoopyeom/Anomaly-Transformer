@@ -6,8 +6,8 @@ import os
 import time
 from utils.utils import my_kl_loss
 from model.AnomalyTransformer import AnomalyTransformer
-from model.transformer_vae import (
-    AnomalyTransformerWithVAE,
+from model.transformer_ae import (
+    AnomalyTransformerAE,
     train_model_with_replay,
 )
 from data_factory.data_loader import get_loader_segment
@@ -124,15 +124,13 @@ class Solver(object):
         self.criterion = nn.MSELoss()
 
     def build_model(self):
-        if getattr(self, 'model_type', 'transformer') == 'transformer_vae':
-            self.model = AnomalyTransformerWithVAE(
+        if getattr(self, 'model_type', 'transformer') == 'transformer_ae':
+            self.model = AnomalyTransformerAE(
                 win_size=self.win_size,
                 enc_in=self.input_c,
                 latent_dim=getattr(self, 'latent_dim', 16),
-                beta=getattr(self, 'beta', 1.0),
                 replay_size=getattr(self, 'replay_size', 1000),
                 replay_horizon=getattr(self, 'replay_horizon', None),
-                store_mu=getattr(self, 'store_mu', False),
                 freeze_after=getattr(self, 'freeze_after', None),
                 ema_decay=getattr(self, 'ema_decay', None),
                 decoder_type=getattr(self, 'decoder_type', 'mlp'),
@@ -325,7 +323,7 @@ class Solver(object):
                 iter_count += 1
                 input = input_data.float().to(self.device)
 
-                if getattr(self, 'model_type', 'transformer') == 'transformer_vae':
+                if getattr(self, 'model_type', 'transformer') == 'transformer_ae':
                     loss, updated = train_model_with_replay(
                         self.model,
                         self.optimizer,
@@ -426,7 +424,7 @@ class Solver(object):
                 break
             adjust_learning_rate(self.optimizer, epoch + 1, self.lr)
 
-        if getattr(self, 'model_type', 'transformer') == 'transformer_vae':
+        if getattr(self, 'model_type', 'transformer') == 'transformer_ae':
             print(f"CPD triggered updates: {self.update_count}")
             if self.history:
                 counts, f1s, aucs = zip(*self.history)

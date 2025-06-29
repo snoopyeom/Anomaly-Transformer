@@ -84,9 +84,9 @@ def main():
     parser.add_argument(
         '--model_type',
         type=str,
-        default='transformer_vae',
-        choices=['transformer', 'transformer_vae'],
-        help='VAE 브랜치를 사용하려면 transformer_vae 선택')
+        default='transformer_ae',
+        choices=['transformer', 'transformer_ae'],
+        help='AE 브랜치를 사용하려면 transformer_ae 선택')
     parser.add_argument('--latent_dim', type=int, default=16)
     parser.add_argument('--beta', type=float, default=1.0)
     parser.add_argument('--replay_horizon', type=int, default=None)

@@ -3,11 +3,11 @@ import pytest
 torch = pytest.importorskip("torch")
 F = torch.nn.functional
 
-from model.transformer_vae import AnomalyTransformerWithVAE, train_model_with_replay
+from model.transformer_ae import AnomalyTransformerAE, train_model_with_replay
 
 
-def test_store_mu_deterministic_replay():
-    model = AnomalyTransformerWithVAE(
+def test_deterministic_replay():
+    model = AnomalyTransformerAE(
         win_size=4,
         enc_in=1,
         d_model=4,
@@ -15,7 +15,6 @@ def test_store_mu_deterministic_replay():
         e_layers=1,
         d_ff=4,
         latent_dim=2,
-        store_mu=True,
     )
     dummy = torch.zeros(1, 4, 1)
     model(dummy)
@@ -25,7 +24,7 @@ def test_store_mu_deterministic_replay():
 
 
 def test_freeze_encoder():
-    model = AnomalyTransformerWithVAE(
+    model = AnomalyTransformerAE(
         win_size=4,
         enc_in=1,
         d_model=4,
@@ -44,7 +43,7 @@ def test_freeze_encoder():
 def test_decoder_types():
     dummy = torch.zeros(1, 4, 1)
     for dec in ["mlp", "rnn", "attention"]:
-        model = AnomalyTransformerWithVAE(
+        model = AnomalyTransformerAE(
             win_size=4,
             enc_in=1,
             d_model=4,
@@ -59,7 +58,7 @@ def test_decoder_types():
 
 
 def test_generate_replay_sequence():
-    model = AnomalyTransformerWithVAE(
+    model = AnomalyTransformerAE(
         win_size=4,
         enc_in=1,
         d_model=4,
@@ -76,7 +75,7 @@ def test_generate_replay_sequence():
 
 
 def test_z_bank_stores_x():
-    model = AnomalyTransformerWithVAE(
+    model = AnomalyTransformerAE(
         win_size=4,
         enc_in=1,
         d_model=4,
@@ -91,7 +90,7 @@ def test_z_bank_stores_x():
 
 
 def test_replay_consistency_loss():
-    model = AnomalyTransformerWithVAE(
+    model = AnomalyTransformerAE(
         win_size=4,
         enc_in=1,
         d_model=4,
