@@ -302,29 +302,31 @@ class AnomalyTransformerAE(nn.Module):
             losses = F.mse_loss(recon, cand_x, reduction="none").mean(dim=(1, 2))
         baseline = losses.mean().detach()
 
-        selected = []
+        selected: list[int] = []
         selected_weights = []
-        for idx in top_k:
+        for idx_tensor in top_k:
             if len(selected) >= n:
                 break
+            idx = int(idx_tensor)
             candidate = bank_z[idx]
             if selected:
                 sims_sel = F.cosine_similarity(
-                    candidate.unsqueeze(0), bank_z[selected], dim=1
+                    candidate.unsqueeze(0), bank_z[torch.tensor(selected, device=device)], dim=1
                 )
                 if sims_sel.max() > 0.95:
                     continue
             selected.append(idx)
-            selected_weights.append(losses[(top_k == idx).nonzero(as_tuple=True)[0]].item())
+            selected_weights.append(losses[(top_k == idx_tensor).nonzero(as_tuple=True)[0]].item())
         if len(selected) < n:
-            remaining = [i.item() for i in order if i not in selected]
+            remaining = [int(i) for i in order if int(i) not in selected]
             for idx in remaining:
                 if len(selected) == n:
                     break
                 selected.append(idx)
-                selected_weights.append(losses[(top_k == idx).nonzero(as_tuple=True)[0]].item() if idx in top_k else baseline.item())
+                idx_tensor = torch.tensor(idx, device=device)
+                selected_weights.append(losses[(top_k == idx_tensor).nonzero(as_tuple=True)[0]].item() if idx_tensor in top_k else baseline.item())
 
-        z = bank_z[selected]
+        z = bank_z[torch.tensor(selected, device=device)]
         stored_x = torch.stack([self.z_bank[i][0] for i in selected]).to(device)
         with torch.no_grad():
             if getattr(self.decoder, "requires_condition", False):
