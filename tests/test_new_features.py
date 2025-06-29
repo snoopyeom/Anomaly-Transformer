@@ -86,7 +86,7 @@ def test_z_bank_stores_x():
     )
     dummy = torch.ones(1, 4, 1)
     model(dummy)
-    assert torch.equal(model.z_bank[0][0], dummy[0])
+    assert torch.equal(model.z_bank[0]["x"], dummy[0])
 
 
 def test_replay_consistency_loss():
@@ -102,7 +102,7 @@ def test_replay_consistency_loss():
     opt = torch.optim.Adam(model.parameters(), lr=1e-2)
     dummy = torch.ones(1, 4, 1)
     model(dummy)  # populate z_bank
-    before = model.decoder(model.z_bank[0][1].unsqueeze(0)).detach()
+    before = model.decoder(model.z_bank[0]["z"].unsqueeze(0)).detach()
     train_model_with_replay(
         model,
         opt,
@@ -110,6 +110,6 @@ def test_replay_consistency_loss():
         replay_consistency_weight=1.0,
         cpd_penalty=0,
     )
-    after = model.decoder(model.z_bank[0][1].unsqueeze(0))
-    target = model.z_bank[0][0].unsqueeze(0)
+    after = model.decoder(model.z_bank[0]["z"].unsqueeze(0))
+    target = model.z_bank[0]["x"].unsqueeze(0)
     assert F.mse_loss(after, target) < F.mse_loss(before, target)

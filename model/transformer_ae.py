@@ -25,44 +25,43 @@ def my_kl_loss(p, q):
 
 
 class MLPDecoder(nn.Module):
-    """Two-layer MLP decoder."""
+    """Two-layer MLP decoder operating on latent sequences."""
 
-    def __init__(self, latent_dim: int, d_model: int, win_size: int, enc_in: int):
+    def __init__(self, latent_dim: int, d_model: int, enc_in: int):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(latent_dim, d_model),
             nn.ReLU(),
-            nn.Linear(d_model, win_size * enc_in),
+            nn.Linear(d_model, enc_in),
         )
-        self.win_size = win_size
-        self.enc_in = enc_in
 
     def forward(self, z: torch.Tensor) -> torch.Tensor:
-        out = self.net(z)
-        return out.view(z.size(0), self.win_size, self.enc_in)
+        # z: [B, L, latent_dim]
+        B, L, _ = z.size()
+        out = self.net(z.view(B * L, -1))
+        return out.view(B, L, -1)
 
 
 class RNNDecoder(nn.Module):
     """GRU-based decoder for sequential reconstruction."""
 
-    def __init__(self, latent_dim: int, d_model: int, win_size: int, enc_in: int):
+    def __init__(self, latent_dim: int, d_model: int, enc_in: int):
         super().__init__()
-        self.h_proj = nn.Linear(latent_dim, d_model)
+        self.in_proj = nn.Linear(latent_dim, d_model)
         self.rnn = nn.GRU(d_model, d_model, batch_first=True)
         self.out = nn.Linear(d_model, enc_in)
-        self.win_size = win_size
 
     def forward(self, z: torch.Tensor) -> torch.Tensor:
-        h0 = torch.tanh(self.h_proj(z)).unsqueeze(0)
-        inputs = torch.zeros(z.size(0), self.win_size, h0.size(-1), device=z.device)
-        out, _ = self.rnn(inputs, h0)
+        # z: [B, L, latent_dim]
+        inputs = self.in_proj(z)
+        out, _ = self.rnn(inputs)
         return self.out(out)
 
 
 class AttentionDecoder(nn.Module):
-    """Transformer decoder variant."""
+    """Transformer decoder variant operating on latent sequences."""
 
-    def __init__(self, latent_dim: int, d_model: int, win_size: int, enc_in: int,
+    def __init__(self, latent_dim: int, d_model: int, enc_in: int,
                  n_heads: int, d_ff: int):
         super().__init__()
         layer = nn.TransformerDecoderLayer(
@@ -74,10 +73,10 @@ class AttentionDecoder(nn.Module):
         self.decoder = nn.TransformerDecoder(layer, num_layers=1)
         self.fc = nn.Linear(latent_dim, d_model)
         self.out = nn.Linear(d_model, enc_in)
-        self.win_size = win_size
 
     def forward(self, z: torch.Tensor) -> torch.Tensor:
-        tgt = self.fc(z).unsqueeze(1).repeat(1, self.win_size, 1)
+        # z: [B, L, latent_dim]
+        tgt = self.fc(z)
         memory = torch.zeros_like(tgt)
         out = self.decoder(tgt, memory)
         return self.out(out)
@@ -108,15 +107,15 @@ class ConditionalTransformerDecoder(nn.Module):
         self.cond_embed = DataEmbedding(enc_in, d_model, dropout=0.0)
         self.out = nn.Linear(d_model, enc_in)
         self.pos_embed = PositionalEmbedding(d_model)
-        self.win_size = win_size
         self.cond_len = cond_len
         self.requires_condition = True
 
     def forward(self, z: torch.Tensor, cond: torch.Tensor | None = None) -> torch.Tensor:
-        tgt = self.lat_proj(z).unsqueeze(1).repeat(1, self.win_size, 1)
-        tgt = tgt + self.pos_embed(tgt)
+        # z: [B, L, latent_dim]
+        tgt = self.lat_proj(z) + self.pos_embed(z)
         if cond is not None:
             memory = self.cond_embed(cond)
+            memory = memory + self.pos_embed(memory)
         else:
             memory = torch.zeros(z.size(0), 1, tgt.size(-1), device=z.device)
         out = self.decoder(tgt, memory)
@@ -134,7 +133,8 @@ class AnomalyTransformerAE(nn.Module):
                  freeze_after: int | None = None,
                  ema_decay: float | None = None,
                  decoder_type: str = 'mlp',
-                 cond_len: int = 5):
+                 cond_len: int = 5,
+                 latent_noise_std: float = 0.0):
 
         super().__init__()
         self.win_size = win_size
@@ -146,6 +146,7 @@ class AnomalyTransformerAE(nn.Module):
         self.freeze_after = freeze_after
         self.ema_decay = ema_decay
         self.encoder_frozen = False
+        self.latent_noise_std = latent_noise_std
 
 
         # Transformer components
@@ -169,13 +170,13 @@ class AnomalyTransformerAE(nn.Module):
 
         # VAE components
         self.fc_latent = nn.Linear(d_model, latent_dim)
-        
+
         if decoder_type == 'mlp':
-            self.decoder = MLPDecoder(latent_dim, d_model, win_size, enc_in)
+            self.decoder = MLPDecoder(latent_dim, d_model, enc_in)
         elif decoder_type == 'rnn':
-            self.decoder = RNNDecoder(latent_dim, d_model, win_size, enc_in)
+            self.decoder = RNNDecoder(latent_dim, d_model, enc_in)
         elif decoder_type == 'attention':
-            self.decoder = AttentionDecoder(latent_dim, d_model, win_size, enc_in, n_heads, d_ff)
+            self.decoder = AttentionDecoder(latent_dim, d_model, enc_in, n_heads, d_ff)
         elif decoder_type == 'conditional':
             self.decoder = ConditionalTransformerDecoder(
                 latent_dim,
@@ -203,7 +204,7 @@ class AnomalyTransformerAE(nn.Module):
         """Remove stale latent vectors based on ``replay_horizon`` and size."""
         if self.replay_horizon is not None:
             threshold = self.current_step - self.replay_horizon
-            self.z_bank = [item for item in self.z_bank if item[-1] > threshold]
+            self.z_bank = [item for item in self.z_bank if item["step"] > threshold]
         if len(self.z_bank) > self.replay_size:
             self.z_bank = self.z_bank[-self.replay_size:]
 
@@ -238,8 +239,10 @@ class AnomalyTransformerAE(nn.Module):
         """Forward pass returning reconstruction and attention info."""
         enc = self.embedding(x)
         enc, series, prior, _ = self.encoder(enc)
-        pooled = enc.mean(dim=1)
-        z = self.fc_latent(pooled)
+        z = self.fc_latent(enc)
+        if self.latent_noise_std > 0 and self.training:
+            noise = torch.randn_like(z) * self.latent_noise_std
+            z = z + noise
         if getattr(self.decoder, "requires_condition", False):
             cond = x[:, -self.decoder.cond_len :]
             recon = self.decoder(z, cond)
@@ -249,7 +252,12 @@ class AnomalyTransformerAE(nn.Module):
         # advance time step and store (input, latent) pairs for later replay
         self.current_step += 1
         for x_i, vec in zip(x, z):
-            self.z_bank.append((x_i.detach().cpu(), vec.detach().cpu(), self.current_step))
+            self.z_bank.append({
+                "x": x_i.detach().cpu(),
+                "z": vec.detach().cpu(),
+                "step": self.current_step,
+                "usage": 0,
+            })
         self._purge_z_bank()
 
         self.maybe_freeze_encoder()
@@ -275,24 +283,31 @@ class AnomalyTransformerAE(nn.Module):
         if len(self.z_bank) == 0:
             return None
         device = next(self.parameters()).device
-        bank_z = torch.stack([item[1] for item in self.z_bank]).to(device)
+        bank_z = torch.stack([item["z"] for item in self.z_bank]).to(device)
+        steps = torch.tensor([item["step"] for item in self.z_bank], device=device, dtype=torch.float32)
+        usages = torch.tensor([item.get("usage", 0) for item in self.z_bank], device=device, dtype=torch.float32)
         if current_z is None:
             idx = np.random.choice(len(self.z_bank), size=min(n, len(self.z_bank)), replace=False)
             z = bank_z[idx]
             with torch.no_grad():
                 if getattr(self.decoder, "requires_condition", False):
-                    cond = torch.stack([self.z_bank[i][0] for i in idx]).to(device)[:, -self.decoder.cond_len :]
+                    cond = torch.stack([self.z_bank[i]["x"] for i in idx]).to(device)[:, -self.decoder.cond_len :]
                     recon = self.decoder(z, cond)
                 else:
                     recon = self.decoder(z)
+            for i in idx:
+                self.z_bank[int(i)]["usage"] += 1
             return recon
 
         ref = current_z.mean(dim=0)
-        sims = F.cosine_similarity(bank_z, ref.unsqueeze(0), dim=1)
+        sims = F.cosine_similarity(bank_z.mean(dim=1), ref.unsqueeze(0), dim=1)
+        decay = 1.0 / (1.0 + (self.current_step - steps))
+        penalty = 1.0 / (1.0 + usages)
+        sims = sims * decay * penalty
         order = torch.argsort(sims, descending=True)
         top_k = order[: min(len(order), n * 5)]
         cand_z = bank_z[top_k]
-        cand_x = torch.stack([self.z_bank[i][0] for i in top_k]).to(device)
+        cand_x = torch.stack([self.z_bank[i]["x"] for i in top_k]).to(device)
         with torch.no_grad():
             if getattr(self.decoder, "requires_condition", False):
                 cond = cand_x[:, -self.decoder.cond_len :]
@@ -308,10 +323,10 @@ class AnomalyTransformerAE(nn.Module):
             if len(selected) >= n:
                 break
             idx = int(idx_tensor)
-            candidate = bank_z[idx]
+            candidate = bank_z[idx].mean(dim=0)
             if selected:
                 sims_sel = F.cosine_similarity(
-                    candidate.unsqueeze(0), bank_z[torch.tensor(selected, device=device)], dim=1
+                    candidate.unsqueeze(0), bank_z[torch.tensor(selected, device=device)].mean(dim=1), dim=1
                 )
                 if sims_sel.max() > 0.95:
                     continue
@@ -327,7 +342,7 @@ class AnomalyTransformerAE(nn.Module):
                 selected_weights.append(losses[(top_k == idx_tensor).nonzero(as_tuple=True)[0]].item() if idx_tensor in top_k else baseline.item())
 
         z = bank_z[torch.tensor(selected, device=device)]
-        stored_x = torch.stack([self.z_bank[i][0] for i in selected]).to(device)
+        stored_x = torch.stack([self.z_bank[i]["x"] for i in selected]).to(device)
         with torch.no_grad():
             if getattr(self.decoder, "requires_condition", False):
                 cond = stored_x[:, -self.decoder.cond_len :]
@@ -336,6 +351,8 @@ class AnomalyTransformerAE(nn.Module):
                 recon = self.decoder(z)
         weights = torch.tensor(selected_weights, device=device)
         weights = weights / (baseline + 1e-6)
+        for idx in selected:
+            self.z_bank[int(idx)]["usage"] += 1
         return recon, weights
 
     def generate_replay_sequence(self, deterministic: bool = False):
@@ -343,9 +360,9 @@ class AnomalyTransformerAE(nn.Module):
         self._purge_z_bank()
         if len(self.z_bank) == 0:
             return None
-        ordered = sorted(self.z_bank, key=lambda t: t[-1])
+        ordered = sorted(self.z_bank, key=lambda t: t["step"])
         device = next(self.parameters()).device
-        z = torch.stack([t[1] for t in ordered]).to(device)
+        z = torch.stack([t["z"] for t in ordered]).to(device)
         with torch.no_grad():
             recon = self.decoder(z)
         return recon
@@ -392,8 +409,7 @@ def train_model_with_replay(
             with torch.no_grad():
                 enc = model.embedding(current_data)
                 enc, _, _, _ = model.encoder(enc)
-                pooled = enc.mean(dim=1)
-                z_curr = model.fc_latent(pooled)
+                z_curr = model.fc_latent(enc)
             replay = model.generate_replay_samples(len(current_data), current_z=z_curr)
             if replay is not None:
                 replay_samples, replay_weights = replay
@@ -410,8 +426,8 @@ def train_model_with_replay(
             size=min(max_replay_samples, len(model.z_bank)),
             replace=False,
         )
-        latents = torch.stack([model.z_bank[i][1] for i in idx]).to(device)
-        targets = torch.stack([model.z_bank[i][0] for i in idx]).to(device)
+        latents = torch.stack([model.z_bank[i]["z"] for i in idx]).to(device)
+        targets = torch.stack([model.z_bank[i]["x"] for i in idx]).to(device)
         recon_bank = model.decoder(latents)
         bank_loss = F.mse_loss(recon_bank, targets)
         loss = loss + replay_consistency_weight * bank_loss
