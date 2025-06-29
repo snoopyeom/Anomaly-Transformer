@@ -72,3 +72,18 @@ def test_generate_replay_sequence():
         model(dummy)
     seq = model.generate_replay_sequence(deterministic=True)
     assert seq.shape[0] >= 3
+
+
+def test_z_bank_stores_x():
+    model = AnomalyTransformerWithVAE(
+        win_size=4,
+        enc_in=1,
+        d_model=4,
+        n_heads=1,
+        e_layers=1,
+        d_ff=4,
+        latent_dim=2,
+    )
+    dummy = torch.ones(1, 4, 1)
+    model(dummy)
+    assert torch.equal(model.z_bank[0][0], dummy[0])
