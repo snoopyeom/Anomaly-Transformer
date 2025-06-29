@@ -20,6 +20,9 @@ if missing:
         + ". Install them with 'pip install -r requirements-demo.txt'"
     )
 
+import numpy as np
+import torch
+
 from torch.utils.data import DataLoader, TensorDataset
 
 from utils.analysis_tools import plot_replay_vs_series
