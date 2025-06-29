@@ -124,6 +124,7 @@ qualitatively inspecting continual learning behavior.
   `top_k` option that automatically creates additional zoomed-in figures around
   the most significant change points, and `extra_zoom_ranges` for arbitrary
   fixed-range views (e.g. `0:4000`).
+  fixed-range views.
   dataset loader using t-SNE, saving a scatter plot that compares their
   distributions.
 - `visualize_cpd_detection(series, penalty=20, save_path="cpd_detection.png")`
