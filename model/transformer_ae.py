@@ -299,7 +299,11 @@ class AnomalyTransformerAE(nn.Module):
                 self.z_bank[int(i)]["usage"] += 1
             return recon
 
-        ref = current_z.mean(dim=0)
+        # ``current_z`` has shape (batch, seq_len, latent_dim). We average
+        # across both batch and temporal dimensions to obtain a single latent
+        # vector representing the current window of data. This ensures the
+        # cosine similarity operates on vectors of shape ``(latent_dim,)``.
+        ref = current_z.mean(dim=(0, 1))
         sims = F.cosine_similarity(bank_z.mean(dim=1), ref.unsqueeze(0), dim=1)
         decay = 1.0 / (1.0 + (self.current_step - steps))
         penalty = 1.0 / (1.0 + usages)
