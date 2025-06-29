@@ -118,9 +118,10 @@ qualitatively inspecting continual learning behavior.
   draws change points detected by `ruptures`. When `penalty` is ``None`` a
   heuristic based on series length is used, and `min_size` enforces a minimum
   gap between change points so the plot remains readable. The helper also
-  accepts `zoom_range` to focus on a specific slice of the sequence and a
+  accepts `zoom_range` to focus on a specific slice of the sequence, a
   `top_k` option that automatically creates additional zoomed-in figures around
-  the most significant change points.
+  the most significant change points, and `extra_zoom_ranges` for arbitrary
+  fixed-range views.
   dataset loader using t-SNE, saving a scatter plot that compares their
   distributions.
 - `visualize_cpd_detection(series, penalty=20, save_path="cpd_detection.png")`
