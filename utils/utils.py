@@ -4,6 +4,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 import numpy as np
+import os
+import logging
+import sys
+from datetime import datetime
 
 
 def to_var(x, volatile=False):
@@ -62,3 +66,37 @@ def filter_short_segments(changes: list[int], min_gap: int) -> list[int]:
         if cp - filtered[-1] >= min_gap:
             filtered.append(cp)
     return filtered
+
+
+def prepare_experiment_dir(dataset: str, root: str = "dataset") -> str:
+    """Create and return a timestamped experiment directory.
+
+    Parameters
+    ----------
+    dataset : str
+        Dataset name supplied via ``--dataset``.
+    root : str, optional
+        Root directory under which results are stored, by default ``"dataset"``.
+
+    Returns
+    -------
+    str
+        Absolute path to the created experiment directory.
+    """
+
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    path = os.path.join(root, dataset.lower(), timestamp)
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def setup_logging(log_path: str) -> None:
+    """Configure logging to file and stdout."""
+
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[logging.FileHandler(log_path), logging.StreamHandler(sys.stdout)],
+    )
+

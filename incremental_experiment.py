@@ -2,6 +2,7 @@
 
 import argparse
 import os
+from utils.utils import prepare_experiment_dir, setup_logging
 
 try:
     import torch  # noqa: F401
@@ -131,7 +132,8 @@ def main():
     args = parser.parse_args()
     args.cpd_extra_ranges = _parse_ranges(args.cpd_extra_ranges)
 
-    os.makedirs(args.model_save_path, exist_ok=True)
+    args.model_save_path = prepare_experiment_dir(args.dataset)
+    setup_logging(os.path.join(args.model_save_path, "log.txt"))
 
     train_and_test(args)
 
