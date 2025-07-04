@@ -69,7 +69,6 @@ def filter_short_segments(changes: list[int], min_gap: int) -> list[int]:
 
 
 def prepare_experiment_dir(dataset: str, root: str = "outputs") -> str:
-def prepare_experiment_dir(dataset: str, root: str = "dataset") -> str:
     """Create and return a timestamped experiment directory.
 
     Parameters
@@ -78,7 +77,6 @@ def prepare_experiment_dir(dataset: str, root: str = "dataset") -> str:
         Dataset name supplied via ``--dataset``.
     root : str, optional
         Root directory under which results are stored, by default ``"outputs"``.
-        Root directory under which results are stored, by default ``"dataset"``.
 
     Returns
     -------
