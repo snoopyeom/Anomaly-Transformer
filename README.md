@@ -68,6 +68,7 @@ approach leverages the VAE branch to mitigate concept drift.
 - `--anomaly_ratio`: anomaly ratio in training set (default `1.0`).
 - `--model_save_path`: directory for checkpoints and results. By default a
   timestamped folder is created under `outputs/<dataset>/`.
+  timestamped folder is created under `dataset/<dataset>/`.
 - `--model_type`: `transformer` or `transformer_ae` (default
   `transformer_ae`).
 - `--cpd_penalty`: penalty used by `ruptures` for change point detection
@@ -108,6 +109,7 @@ values, such as `--cpd_penalty 40`, will trigger fewer updates.
 Training and evaluation artifacts are saved under `--model_save_path`.
 When left at its default value this directory is automatically created as
 `outputs/<dataset>/<timestamp>` so that results from different runs remain
+`dataset/<dataset>/<timestamp>` so that results from different runs remain
 organized.
 Two figures, `f1_score.png` and `roc_auc.png`, visualize F1 score and ROC AUC
 across the number of CPD-triggered updates. Starting with this version the

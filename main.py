@@ -84,6 +84,7 @@ if __name__ == '__main__':
     if config.model_tag is None:
         config.model_tag = config.dataset
     # create timestamped directory under outputs/<name>/ for results
+    # create timestamped directory under dataset/<name>/ for results
     config.model_save_path = prepare_experiment_dir(config.dataset)
     setup_logging(os.path.join(config.model_save_path, "log.txt"))
 
