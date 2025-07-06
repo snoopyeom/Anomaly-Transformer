@@ -26,7 +26,11 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from model.transformer_ae import AnomalyTransformerAE
 from utils.zbank_autoencoder import ZBankAutoencoder, ZBankDataset, train_autoencoder
-from utils.analysis_tools import plot_reconstruction_tsne, plot_reconstruction_pca
+from utils.analysis_tools import (
+    plot_reconstruction_tsne,
+    plot_reconstruction_pca,
+    plot_autoencoder_vs_series,
+)
 
 
 def create_series(n_steps=400):
@@ -53,6 +57,16 @@ def main():
 
     plot_reconstruction_tsne(ae, dataset, save_path="recon_tsne.png")
     plot_reconstruction_pca(ae, dataset, save_path="recon_pca.png")
+    # Visualize a portion of the original series against the autoencoder
+    # reconstruction to qualitatively assess performance
+    plot_autoencoder_vs_series(
+        ae,
+        dataset,
+        series.squeeze(),
+        start=0,
+        end=200,
+        save_path="recon_vs_series.png",
+    )
 
 
 if __name__ == "__main__":

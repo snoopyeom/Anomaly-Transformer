@@ -375,3 +375,73 @@ def plot_replay_vs_series(
     os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
     plt.savefig(save_path)
     plt.close()
+
+
+def plot_autoencoder_vs_series(
+    autoencoder,
+    dataset,
+    series,
+    *,
+    start=0,
+    end=None,
+    save_path="ae_vs_series.png",
+):
+    """Compare autoencoder reconstruction with the original series.
+
+    Parameters
+    ----------
+    autoencoder : ZBankAutoencoder
+        Trained autoencoder used to reconstruct ``dataset`` windows.
+    dataset : ZBankDataset
+        Dataset of ``(z, x)`` pairs the autoencoder was trained on.
+    series : array-like
+        Original sequence used to build ``dataset``.
+    start : int, optional
+        Starting index of the slice to plot.
+    end : int, optional
+        End index of the slice to plot. Defaults to ``len(series)``.
+    save_path : str, optional
+        Location where the figure will be saved.
+    """
+
+    _ensure_deps()
+
+    series = np.asarray(series).squeeze()
+    if end is None:
+        end = len(series)
+    start = max(0, start)
+    end = min(len(series), end)
+
+    win_size = dataset[0][1].shape[0]
+    max_len = end - start
+    recon = np.zeros(max_len)
+    counts = np.zeros(max_len)
+
+    autoencoder.eval()
+    with torch.no_grad():
+        for i in range(start, min(end - win_size + 1, len(dataset))):
+            z, _ = dataset[i]
+            r = autoencoder(z.unsqueeze(0)).squeeze(0).cpu().numpy()[:, 0]
+            idx_start = i - start
+            idx_end = idx_start + win_size
+            if idx_end > max_len:
+                r = r[: max_len - idx_start]
+                idx_end = max_len
+            recon[idx_start:idx_end] += r
+            counts[idx_start:idx_end] += 1
+
+    counts[counts == 0] = 1
+    recon /= counts
+
+    actual = series[start:end]
+    x = np.arange(start, start + len(actual))
+    plt.figure()
+    plt.plot(x, actual, label="Actual")
+    plt.plot(x[: len(recon)], recon, label="Reconstruction", alpha=0.7)
+    plt.xlabel("Time")
+    plt.title("Autoencoder Reconstruction")
+    plt.legend()
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+    plt.savefig(save_path)
+    plt.close()
