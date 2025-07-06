@@ -149,6 +149,43 @@ def plot_z_bank_umap(model, loader, n_samples=500, save_path="z_bank_umap.png"):
     )
 
 
+def _collect_recon(autoencoder, dataset, n_samples):
+    """Return original windows and reconstructions."""
+    _ensure_deps()
+    loader = torch.utils.data.DataLoader(dataset, batch_size=1)
+    orig = []
+    recon = []
+    autoencoder.eval()
+    with torch.no_grad():
+        for z, x in loader:
+            r = autoencoder(z)
+            orig.append(x.squeeze(0))
+            recon.append(r.squeeze(0))
+            if len(orig) >= n_samples:
+                break
+    orig = torch.stack(orig).numpy().reshape(len(orig), -1)
+    recon = torch.stack(recon).numpy().reshape(len(recon), -1)
+    return orig, recon
+
+
+def plot_reconstruction_tsne(autoencoder, dataset, n_samples=500, save_path="recon_tsne.png"):
+    """Visualize autoencoder reconstructions with t-SNE."""
+    _ensure_deps()
+    orig, recon = _collect_recon(autoencoder, dataset, n_samples)
+    combined = np.concatenate([orig, recon], axis=0)
+    reduced = TSNE(n_components=2, random_state=0).fit_transform(combined)
+    _scatter_projection(orig, recon, reduced, "t-SNE of Reconstructions", save_path)
+
+
+def plot_reconstruction_pca(autoencoder, dataset, n_samples=500, save_path="recon_pca.png"):
+    """Visualize autoencoder reconstructions with PCA."""
+    _ensure_deps()
+    orig, recon = _collect_recon(autoencoder, dataset, n_samples)
+    combined = np.concatenate([orig, recon], axis=0)
+    reduced = PCA(n_components=2).fit_transform(combined)
+    _scatter_projection(orig, recon, reduced, "PCA of Reconstructions", save_path)
+
+
 def visualize_cpd_detection(
     series,
     penalty=None,

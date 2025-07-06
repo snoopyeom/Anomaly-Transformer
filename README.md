@@ -157,6 +157,15 @@ qualitatively inspecting continual learning behavior.
   The script checks for these dependencies and exits with a message if any are
   missing.
 
+- `scripts/zbank_autoencoder_demo.py` illustrates how to train a lightweight
+  autoencoder purely on the latent vectors stored in `z_bank`. After training it
+  generates `recon_tsne.png` and `recon_pca.png` visualizing how well the
+  reconstructions match the original windows. Run the demo with
+
+  ```bash
+  python -m scripts.zbank_autoencoder_demo
+  ```
+
 
 Directories in the provided `save_path` are created automatically, so you can
 use paths such as `outputs/z_bank_tsne.png` without pre-creating the folder.
