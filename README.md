@@ -170,6 +170,15 @@ qualitatively inspecting continual learning behavior.
   `z_bank` from pretrained weights and `--ae_epochs` to control how long the
   lightweight autoencoder trains.
 
+- `scripts/raw_autoencoder_demo.py` trains an encoder+decoder autoencoder
+  directly on windowed time series without relying on a `z_bank`. Usage:
+
+  ```bash
+  python -m scripts.raw_autoencoder_demo
+  ```
+  Adjust `--epochs`, `--latent_dim`, and other arguments to explore how well a
+  simple AE reconstructs the data.
+
 - `scripts/visualize_dataset_distribution.py` contrasts the training and test
   splits of the benchmark datasets (SMD, SMAP, MSL, PSM) using
   `plot_projection_by_segment`. Provide the dataset name and path and it will
