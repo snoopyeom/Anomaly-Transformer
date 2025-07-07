@@ -478,6 +478,34 @@ def plot_autoencoder_vs_series(
     plt.savefig(save_path)
     plt.close()
 
+# New functions for raw data visualization
+
+DEFAULT_RAW_VIZ_DIR = "dataset_dist_proof"
+
+
+def plot_feature_distribution_by_segment(
+    data, segments, feature=0, save_path=os.path.join(DEFAULT_RAW_VIZ_DIR, "feature_dist.png")
+):
+    """Boxplot showing how a raw feature's distribution changes across segments.
+
+    Parameters
+    ----------
+    data : array-like of shape (time, features) or (time,)
+        Raw sequence to analyze.
+    segments : list of tuple(int, int)
+        Each ``(start, end)`` pair defines a slice ``data[start:end]``.
+    feature : int, optional
+        Index of the feature to visualize when ``data`` is 2D.
+    save_path : str, optional
+        Location where the figure will be saved.
+    """
+    _ensure_deps()
+    data = np.asarray(data)
+    if data.ndim == 1:
+        data = data[:, None]
+    seg_data = []
+    valid_labels = []
+    for start, end in segments:
 
 def plot_feature_distribution_by_segment(data, segments, feature_index, save_path="feature_dist.png"):
     """Plot feature distribution histograms for specified data segments.
@@ -506,6 +534,15 @@ def plot_feature_distribution_by_segment(data, segments, feature_index, save_pat
         end = min(len(data), end)
         if start >= end:
             continue
+        seg_data.append(data[start:end, feature])
+        valid_labels.append(f"{start}-{end}")
+    if not seg_data:
+        raise ValueError("No valid segments provided")
+    plt.figure()
+    plt.boxplot(seg_data, labels=valid_labels, showfliers=False)
+    plt.xlabel("Segment")
+    plt.ylabel(f"Feature {feature}")
+    plt.title("Feature Distribution by Segment")
         values = data[start:end, feature_index]
         plt.hist(values, bins=30, alpha=0.5, label=f"Segment {i}")
     plt.xlabel(f"Feature {feature_index}")
@@ -517,6 +554,42 @@ def plot_feature_distribution_by_segment(data, segments, feature_index, save_pat
     plt.close()
 
 
+def plot_rolling_stats(
+    data,
+    feature=0,
+    window=50,
+    save_path=os.path.join(DEFAULT_RAW_VIZ_DIR, "rolling_stats.png"),
+):
+    """Plot rolling mean, std, and min-max range of a raw feature."""
+    _ensure_deps()
+    data = np.asarray(data)
+    if data.ndim == 1:
+        series = data.astype(float)
+    else:
+        series = data[:, feature].astype(float)
+    means = []
+    stds = []
+    mins = []
+    maxs = []
+    for i in range(len(series)):
+        start = max(0, i - window + 1)
+        win = series[start : i + 1]
+        means.append(win.mean())
+        stds.append(win.std())
+        mins.append(win.min())
+        maxs.append(win.max())
+    x = np.arange(len(series))
+    plt.figure()
+    plt.plot(x, means, label="mean")
+    plt.fill_between(x, mins, maxs, alpha=0.2, label="min-max")
+    plt.plot(x, stds, label="std")
+    plt.xlabel("Time")
+    plt.title("Rolling Statistics")
+    plt.legend()
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+    plt.savefig(save_path)
+    plt.close()
 def plot_rolling_stats(series, *, window=10, save_path="rolling_stats.png"):
     """Plot rolling mean and standard deviation of a 1D sequence."""
 
