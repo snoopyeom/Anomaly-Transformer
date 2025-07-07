@@ -97,9 +97,15 @@ def main():
                         help='freeze encoder after this many steps')
     parser.add_argument('--ema_decay', type=float, default=None,
                         help='EMA decay for encoder stabilization')
-    parser.add_argument('--decoder_type', type=str, default='mlp',
+    parser.add_argument('--latent_noise_std', type=float, default=0.0,
+                        help='stddev of noise added to latent vectors')
+    parser.add_argument('--decoder_type', type=str, default='attention',
                         choices=['mlp', 'rnn', 'attention'],
                         help='decoder architecture')
+    parser.add_argument('--replay_consistency_weight', type=float, default=0.0,
+                        help='weight for replay consistency loss term')
+    parser.add_argument('--high_freq_weight', type=float, default=0.0,
+                        help='weight for high frequency reconstruction loss')
     parser.add_argument('--model_tag', type=str, default='dynamic')
     parser.add_argument(
         '--cpd_penalty',

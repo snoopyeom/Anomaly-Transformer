@@ -113,3 +113,31 @@ def test_replay_consistency_loss():
     after = model.decoder(model.z_bank[0]["z"].unsqueeze(0))
     target = model.z_bank[0]["x"].unsqueeze(0)
     assert F.mse_loss(after, target) < F.mse_loss(before, target)
+
+
+def test_high_freq_loss():
+    base = AnomalyTransformerAE(
+        win_size=4,
+        enc_in=1,
+        d_model=4,
+        n_heads=1,
+        e_layers=1,
+        d_ff=4,
+        latent_dim=2,
+    )
+    with_high = AnomalyTransformerAE(
+        win_size=4,
+        enc_in=1,
+        d_model=4,
+        n_heads=1,
+        e_layers=1,
+        d_ff=4,
+        latent_dim=2,
+        high_freq_weight=1.0,
+    )
+    x = torch.zeros(1, 4, 1)
+    recon = torch.zeros_like(x)
+    recon[:, 2, 0] = 1.0
+    loss_base = base.loss_function(recon, x)
+    loss_hf = with_high.loss_function(recon, x)
+    assert loss_hf > loss_base
