@@ -1,5 +1,8 @@
 import os
 
+# Default directory for efficiency visualization outputs
+DEFAULT_EFF_VIZ_DIR = "eff_viz"
+
 try:  # optional heavy deps are loaded lazily
     import numpy as np  # type: ignore
 except Exception:  # pragma: no cover - handled at runtime
@@ -518,6 +521,7 @@ def plot_rolling_stats(series, *, window=10, save_path="rolling_stats.png"):
     plt.close()
 
 
+def plot_memory_usage_curve(steps, continual_mem, batch_mem, save_path=None):
 def plot_memory_usage_curve(steps, continual_mem, batch_mem, save_path="memory_usage.png"):
     """Plot memory usage for continual vs batch learning over time."""
     _ensure_deps()
@@ -534,11 +538,14 @@ def plot_memory_usage_curve(steps, continual_mem, batch_mem, save_path="memory_u
     plt.title("Memory Usage over Training")
     plt.legend()
     plt.tight_layout()
+    if save_path is None:
+        save_path = os.path.join(DEFAULT_EFF_VIZ_DIR, "memory_usage.png")
     os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
     plt.savefig(save_path)
     plt.close()
 
 
+def plot_parameter_update_efficiency(param_counts, performance, *, labels=None, save_path=None):
 def plot_parameter_update_efficiency(param_counts, performance, *, labels=None, save_path="param_efficiency.png"):
     """Plot model performance as a function of updated parameters."""
     _ensure_deps()
@@ -555,11 +562,14 @@ def plot_parameter_update_efficiency(param_counts, performance, *, labels=None, 
     plt.ylabel("Model Performance")
     plt.title("Parameter Update Efficiency")
     plt.tight_layout()
+    if save_path is None:
+        save_path = os.path.join(DEFAULT_EFF_VIZ_DIR, "param_efficiency.png")
     os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
     plt.savefig(save_path)
     plt.close()
 
 
+def plot_latency_vs_model_size(model_sizes, latencies, *, labels=None, save_path=None):
 def plot_latency_vs_model_size(model_sizes, latencies, *, labels=None, save_path="latency_vs_size.png"):
     """Plot inference latency as a function of model size."""
     _ensure_deps()
@@ -576,6 +586,8 @@ def plot_latency_vs_model_size(model_sizes, latencies, *, labels=None, save_path
     plt.ylabel("Inference Latency")
     plt.title("Latency vs Model Size")
     plt.tight_layout()
+    if save_path is None:
+        save_path = os.path.join(DEFAULT_EFF_VIZ_DIR, "latency_vs_size.png")
     os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
     plt.savefig(save_path)
     plt.close()
