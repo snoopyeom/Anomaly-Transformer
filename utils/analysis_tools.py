@@ -147,6 +147,120 @@ def _scatter_projection(orig_latents, replay_latents, reduced, title, save_path)
     plt.close()
 
 
+def plot_latent_error_scatter(
+    latents,
+    errors,
+    *,
+    method: str = "tsne",
+    save_path: str = "latent_error_scatter.png",
+):
+    """Visualize per-sample latents colored by reconstruction error.
+
+    Parameters
+    ----------
+    latents : array-like of shape (samples, seq_len, latent_dim) or (samples, latent_dim)
+        Latent vectors from ``latent_vectors.npy``.
+    errors : array-like of shape (samples,)
+        Reconstruction errors for each sample.
+    method : {"tsne", "pca"}, optional
+        Dimensionality reduction technique, defaults to ``"tsne"``.
+    save_path : str, optional
+        Location to write the figure.
+    """
+
+    _ensure_deps()
+    latents = np.asarray(latents)
+    errors = np.asarray(errors)
+
+    if latents.ndim == 3:
+        latents = latents.mean(axis=1)
+    elif latents.ndim != 2:
+        raise ValueError("latents must have ndim 2 or 3")
+    if len(latents) != len(errors):
+        raise ValueError("errors must match number of latent samples")
+
+    if method == "tsne":
+        reducer = TSNE(n_components=2, random_state=0)
+    elif method == "pca":
+        reducer = PCA(n_components=2)
+    else:
+        raise ValueError("method must be 'tsne' or 'pca'")
+
+    reduced = reducer.fit_transform(latents)
+
+    plt.figure()
+    sc = plt.scatter(reduced[:, 0], reduced[:, 1], c=errors, cmap="viridis", s=10)
+    plt.xlabel("Dim 1")
+    plt.ylabel("Dim 2")
+    plt.title(f"Latent {method.upper()} Colored by Error")
+    plt.colorbar(sc, label="MSE")
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+    plt.savefig(save_path)
+    plt.close()
+
+
+def plot_sample_flows(
+    latents,
+    decoder_hidden,
+    decoder_output,
+    errors,
+    *,
+    indices=None,
+    save_dir: str = "flow_plots",
+):
+    """Visualize latent->hidden->output flow for selected samples.
+
+    Parameters
+    ----------
+    latents : array-like of shape (samples, seq_len, latent_dim)
+        Stored latent vectors.
+    decoder_hidden : array-like of shape (samples, seq_len, hidden_dim)
+        Decoder hidden representations.
+    decoder_output : array-like of shape (samples, seq_len, features)
+        Decoder outputs.
+    errors : array-like of shape (samples,)
+        Reconstruction errors.
+    indices : list of int, optional
+        Specific sample indices to plot. Defaults to the top 5 errors.
+    save_dir : str, optional
+        Directory where figures are stored.
+    """
+
+    _ensure_deps()
+    latents = np.asarray(latents)
+    decoder_hidden = np.asarray(decoder_hidden)
+    decoder_output = np.asarray(decoder_output)
+    errors = np.asarray(errors)
+
+    if indices is None:
+        indices = np.argsort(errors)[-5:][::-1]
+
+    os.makedirs(save_dir, exist_ok=True)
+
+    for idx in indices:
+        fig, axes = plt.subplots(3, 1, figsize=(6, 6))
+
+        axes[0].imshow(latents[idx].T, aspect="auto", origin="lower")
+        axes[0].set_ylabel("Latent dim")
+        axes[0].set_title(f"Sample {idx} Latent")
+
+        axes[1].imshow(decoder_hidden[idx].T, aspect="auto", origin="lower")
+        axes[1].set_ylabel("Hidden dim")
+        axes[1].set_title("Decoder Hidden")
+
+        axes[2].imshow(decoder_output[idx].T, aspect="auto", origin="lower")
+        axes[2].set_ylabel("Feature")
+        axes[2].set_xlabel("Time")
+        axes[2].set_title("Decoder Output")
+
+        plt.tight_layout()
+        out_file = os.path.join(save_dir, f"sample_{idx}.png")
+        plt.savefig(out_file)
+        plt.close()
+
+
+
 def plot_latent_tsne(latents, save_path="plot_latent_tsne.png", max_points=2000):
     """Visualize latent vectors using t-SNE.
 
