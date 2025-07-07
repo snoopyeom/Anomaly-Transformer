@@ -335,6 +335,8 @@ class Solver(object):
                 plot_latent_pca,
                 plot_error_curve,
                 plot_reconstruction_per_sample,
+                plot_latent_error_scatter,
+                plot_sample_flows,
             )
 
             plot_latent_tsne(
@@ -350,6 +352,18 @@ class Solver(object):
                 inputs_all.numpy(),
                 outputs.numpy(),
                 save_path=os.path.join(out_dir, "plot_reconstruction_per_sample.png"),
+            )
+            plot_latent_error_scatter(
+                latents.numpy(),
+                errors.numpy(),
+                save_path=os.path.join(out_dir, "latent_error_scatter.png"),
+            )
+            plot_sample_flows(
+                latents.numpy(),
+                dec_hid.numpy(),
+                outputs.numpy(),
+                errors.numpy(),
+                save_dir=os.path.join(out_dir, "flow_plots"),
             )
         except Exception as exc:  # pragma: no cover - visualization is optional
             warnings.warn(f"Failed to create debug plots: {exc}")
