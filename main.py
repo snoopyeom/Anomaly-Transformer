@@ -67,6 +67,8 @@ if __name__ == '__main__':
                         help='minimum gap between CPD change points')
     parser.add_argument('--cpd_log_interval', type=int, default=20,
                         help='log metrics every N CPD updates')
+    parser.add_argument('--inspect_mode', action='store_true',
+                        help='save intermediate tensors for debugging')
 
     def _parse_ranges(arg):
         if not arg:

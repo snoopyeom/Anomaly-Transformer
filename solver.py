@@ -84,6 +84,7 @@ class Solver(object):
         'cpd_log_interval': 20,
         'cpd_top_k': 3,
         'cpd_extra_ranges': [(0, 4000)],
+        'inspect_mode': False,
     }
 
     def __init__(self, config):
@@ -295,6 +296,61 @@ class Solver(object):
         auc = roc_auc_score(gt, attens_energy)
         return f_score, auc
 
+    def collect_debug_info(self, out_dir: str) -> None:
+        """Save intermediate tensors for inspection."""
+        self.model.eval()
+        criterion = nn.MSELoss(reduction="none")
+        latents = []
+        dec_hid = []
+        outputs = []
+        errors = []
+        inputs_all = []
+        with torch.no_grad():
+            for batch, _ in self.train_loader:
+                batch = batch.float().to(self.device)
+                result = self.model(batch, return_hidden=True)
+                recon, _, _, z, hid = result
+                latents.append(z.cpu())
+                dec_hid.append(hid.cpu())
+                outputs.append(recon.cpu())
+                err = criterion(recon, batch).mean(dim=(1, 2)).cpu()
+                errors.append(err)
+                inputs_all.append(batch.cpu())
+        latents = torch.cat(latents)
+        dec_hid = torch.cat(dec_hid)
+        outputs = torch.cat(outputs)
+        errors = torch.cat(errors)
+        inputs_all = torch.cat(inputs_all)
+
+        np.save(os.path.join(out_dir, "latent_vectors.npy"), latents.numpy())
+        np.save(os.path.join(out_dir, "decoder_hidden.npy"), dec_hid.numpy())
+        np.save(os.path.join(out_dir, "decoder_output.npy"), outputs.numpy())
+        np.save(os.path.join(out_dir, "reconstruction_errors.npy"), errors.numpy())
+        worst = errors.argmax().item()
+        np.save(os.path.join(out_dir, "worst_window.npy"), np.array(worst))
+
+        try:
+            from utils.analysis_tools import (
+                plot_latent_tsne,
+                plot_latent_pca,
+                plot_error_curve,
+                plot_reconstruction_per_sample,
+            )
+
+            plot_latent_tsne(latents.view(latents.size(0) * latents.size(1), -1).numpy(),
+                             save_path=os.path.join(out_dir, "plot_latent_tsne.png"))
+            plot_latent_pca(latents.view(latents.size(0) * latents.size(1), -1).numpy(),
+                            save_path=os.path.join(out_dir, "plot_latent_pca.png"))
+            plot_error_curve(errors.numpy(),
+                             save_path=os.path.join(out_dir, "plot_error_curve.png"))
+            plot_reconstruction_per_sample(
+                inputs_all.numpy(),
+                outputs.numpy(),
+                save_path=os.path.join(out_dir, "plot_reconstruction_per_sample.png"),
+            )
+        except Exception as exc:  # pragma: no cover - visualization is optional
+            warnings.warn(f"Failed to create debug plots: {exc}")
+
     def train(self):
 
         print("======================TRAIN MODE======================")
@@ -463,6 +519,11 @@ class Solver(object):
                     plot_z_bank_umap(self.model, self.train_loader, save_path=umap_path)
                 except Exception as e:
                     warnings.warn(f"Failed to create latent plots: {e}")
+
+                if getattr(self, 'inspect_mode', False):
+                    debug_dir = os.path.join(path, 'inspect')
+                    os.makedirs(debug_dir, exist_ok=True)
+                    self.collect_debug_info(debug_dir)
 
                 # Visualization of detected change points over the entire
                 # validation series produced a very cluttered figure. Omit the
