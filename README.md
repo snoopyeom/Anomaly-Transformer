@@ -136,9 +136,10 @@ qualitatively inspecting continual learning behavior.
   `top_k` option that automatically creates additional zoomed-in figures around
   the most significant change points, and `extra_zoom_ranges` for arbitrary
   fixed-range views (e.g. `0:4000`).
-- `plot_projection_by_segment(data, segments, method="tsne")` visualizes raw
-  data windows with **t-SNE** or **PCA**, coloring each point according to its
-  time segment so distribution shifts become apparent.
+- `plot_projection_by_segment(data, segments, method="tsne", feature=None)`
+  visualizes raw data windows with **t-SNE** or **PCA**. Using `feature=None`
+  (the default) plots all features and colors each point by its time segment so
+  distribution shifts become apparent.
 - `visualize_cpd_detection(series, penalty=20, save_path="cpd_detection.png")`
   draws change points detected by `ruptures` on top of a sequence so that you
   can confirm whether CPD corresponds to actual distribution shifts.

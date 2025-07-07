@@ -17,6 +17,14 @@ def test_plot_projection_tsne(tmp_path):
     assert out.exists() and out.stat().st_size > 0
 
 
+def test_projection_all_features(tmp_path):
+    data = np.random.randn(50, 3)
+    segments = [(0, 20), (20, 50)]
+    out = tmp_path / "all_features.png"
+    plot_projection_by_segment(data, segments, method="pca", feature=None, save_path=str(out))
+    assert out.exists() and out.stat().st_size > 0
+
+
 def test_projection_default_directory(tmp_path, monkeypatch):
     data = np.random.randn(100, 2)
     segments = [(0, 50), (50, 100)]
