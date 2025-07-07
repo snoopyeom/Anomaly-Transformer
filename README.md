@@ -183,6 +183,7 @@ qualitatively inspecting continual learning behavior.
   showing the encoder and decoder representations. The window with the largest
   reconstruction error is stored in `worst_window.npy` and its index is printed
   to the console.
+  simple AE reconstructs the data.
 
 - `scripts/visualize_dataset_distribution.py` contrasts the training and test
   splits of the benchmark datasets (SMD, SMAP, MSL, PSM) using

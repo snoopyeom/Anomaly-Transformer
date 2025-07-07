@@ -54,6 +54,12 @@ class BasicWindowAutoencoder(nn.Module):
             h = h.view(b, l, -1)
             return recon, z, h
         return recon, z
+    def forward(self, x: torch.Tensor):
+        # x: [B, L, enc_in]
+        b, l, c = x.size()
+        z = self.encoder(x.view(b * l, c))
+        recon = self.decoder(z).view(b, l, c)
+        return recon, z.view(b, l, -1)
 
 
 def train_window_autoencoder(
@@ -77,7 +83,6 @@ def train_window_autoencoder(
             optim.zero_grad()
             loss.backward()
             optim.step()
-
 
 def collect_autoencoder_details(model: BasicWindowAutoencoder, dataset: Dataset):
     """Return latent vectors, decoder hidden states, and per-window MSE."""

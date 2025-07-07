@@ -30,13 +30,16 @@ from utils.window_autoencoder import (
     WindowDataset,
     BasicWindowAutoencoder,
     train_window_autoencoder,
+
     collect_autoencoder_details,
+
 )
 from utils.analysis_tools import (
     plot_reconstruction_tsne,
     plot_reconstruction_pca,
     plot_autoencoder_vs_series,
     plot_vector_projection,
+
 )
 
 
@@ -79,6 +82,7 @@ def main() -> None:
         end=min(200, len(series)),
         save_path=os.path.join(out_dir, "recon_vs_series.png"),
     )
+
 
     latents, hidden, errors = collect_autoencoder_details(ae, dataset)
     np.save(os.path.join(out_dir, "latents.npy"), latents)
