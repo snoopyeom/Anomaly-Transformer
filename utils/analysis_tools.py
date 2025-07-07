@@ -516,3 +516,67 @@ def plot_rolling_stats(series, *, window=10, save_path="rolling_stats.png"):
     os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
     plt.savefig(save_path)
     plt.close()
+
+
+def plot_memory_usage_curve(steps, continual_mem, batch_mem, save_path="memory_usage.png"):
+    """Plot memory usage for continual vs batch learning over time."""
+    _ensure_deps()
+    steps = np.asarray(steps)
+    continual_mem = np.asarray(continual_mem)
+    batch_mem = np.asarray(batch_mem)
+    if steps.ndim != 1 or continual_mem.shape != steps.shape or batch_mem.shape != steps.shape:
+        raise ValueError("inputs must be 1D arrays of the same length")
+    plt.figure()
+    plt.plot(steps, continual_mem, label="Continual")
+    plt.plot(steps, batch_mem, label="Batch")
+    plt.xlabel("Training Step")
+    plt.ylabel("Memory Usage")
+    plt.title("Memory Usage over Training")
+    plt.legend()
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+    plt.savefig(save_path)
+    plt.close()
+
+
+def plot_parameter_update_efficiency(param_counts, performance, *, labels=None, save_path="param_efficiency.png"):
+    """Plot model performance as a function of updated parameters."""
+    _ensure_deps()
+    param_counts = np.asarray(param_counts)
+    performance = np.asarray(performance)
+    if param_counts.ndim != 1 or performance.shape != param_counts.shape:
+        raise ValueError("param_counts and performance must be 1D arrays of the same length")
+    plt.figure()
+    plt.scatter(param_counts, performance)
+    if labels is not None:
+        for x, y, text in zip(param_counts, performance, labels):
+            plt.text(x, y, str(text))
+    plt.xlabel("Updated Parameters")
+    plt.ylabel("Model Performance")
+    plt.title("Parameter Update Efficiency")
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+    plt.savefig(save_path)
+    plt.close()
+
+
+def plot_latency_vs_model_size(model_sizes, latencies, *, labels=None, save_path="latency_vs_size.png"):
+    """Plot inference latency as a function of model size."""
+    _ensure_deps()
+    model_sizes = np.asarray(model_sizes)
+    latencies = np.asarray(latencies)
+    if model_sizes.ndim != 1 or latencies.shape != model_sizes.shape:
+        raise ValueError("model_sizes and latencies must be 1D arrays of the same length")
+    plt.figure()
+    plt.scatter(model_sizes, latencies)
+    if labels is not None:
+        for x, y, text in zip(model_sizes, latencies, labels):
+            plt.text(x, y, str(text))
+    plt.xlabel("Model Size")
+    plt.ylabel("Inference Latency")
+    plt.title("Latency vs Model Size")
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+    plt.savefig(save_path)
+    plt.close()
+
