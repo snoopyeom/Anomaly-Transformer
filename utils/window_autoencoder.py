@@ -38,8 +38,8 @@ class BasicWindowAutoencoder(nn.Module):
     def forward(self, x: torch.Tensor, *, return_hidden: bool = False):
         """Return reconstruction and latent vectors.
 
-        When ``return_hidden`` is ``True`` the output also includes the
-        decoder's hidden representation after the first activation layer.
+        When ``return_hidden`` is ``True`` also return the decoder's hidden
+        representation after the activation layer.
         """
 
         # x: [B, L, enc_in]
@@ -47,19 +47,13 @@ class BasicWindowAutoencoder(nn.Module):
         flat = x.view(b * l, c)
         z = self.encoder(flat)
         h = self.decoder[0](z)
-        h = self.decoder[1](h)
-        recon = self.decoder[2](h).view(b, l, c)
+        h_act = self.decoder[1](h)
+        recon = self.decoder[2](h_act).view(b, l, c)
         z = z.view(b, l, -1)
         if return_hidden:
-            h = h.view(b, l, -1)
-            return recon, z, h
+            h_act = h_act.view(b, l, -1)
+            return recon, z, h_act
         return recon, z
-    def forward(self, x: torch.Tensor):
-        # x: [B, L, enc_in]
-        b, l, c = x.size()
-        z = self.encoder(x.view(b * l, c))
-        recon = self.decoder(z).view(b, l, c)
-        return recon, z.view(b, l, -1)
 
 
 def train_window_autoencoder(

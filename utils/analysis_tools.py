@@ -190,7 +190,7 @@ def _collect_recon(autoencoder, dataset, n_samples):
     autoencoder.eval()
     with torch.no_grad():
         for z, x in loader:
-            r = autoencoder(z)
+            r, _ = autoencoder(z)
             orig.append(x.squeeze(0))
             recon.append(r.squeeze(0))
             if len(orig) >= n_samples:
