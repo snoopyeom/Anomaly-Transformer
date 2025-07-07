@@ -147,6 +147,66 @@ def _scatter_projection(orig_latents, replay_latents, reduced, title, save_path)
     plt.close()
 
 
+def plot_latent_tsne(latents, save_path="plot_latent_tsne.png"):
+    """Visualize latent vectors using t-SNE."""
+    _ensure_deps()
+    reduced = TSNE(n_components=2, random_state=0).fit_transform(latents)
+    plt.figure()
+    plt.scatter(reduced[:, 0], reduced[:, 1], s=10)
+    plt.xlabel("Dim 1")
+    plt.ylabel("Dim 2")
+    plt.title("t-SNE of Latent Vectors")
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+    plt.savefig(save_path)
+    plt.close()
+
+
+def plot_latent_pca(latents, save_path="plot_latent_pca.png"):
+    """Visualize latent vectors using PCA."""
+    _ensure_deps()
+    reduced = PCA(n_components=2).fit_transform(latents)
+    plt.figure()
+    plt.scatter(reduced[:, 0], reduced[:, 1], s=10)
+    plt.xlabel("Dim 1")
+    plt.ylabel("Dim 2")
+    plt.title("PCA of Latent Vectors")
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+    plt.savefig(save_path)
+    plt.close()
+
+
+def plot_error_curve(errors, save_path="plot_error_curve.png"):
+    """Plot reconstruction error over samples."""
+    _ensure_deps()
+    plt.figure()
+    plt.plot(np.arange(len(errors)), errors)
+    plt.xlabel("Sample")
+    plt.ylabel("MSE")
+    plt.title("Reconstruction Error")
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+    plt.savefig(save_path)
+    plt.close()
+
+
+def plot_reconstruction_per_sample(inputs, reconstructions, save_path="plot_reconstruction_per_sample.png", n=5):
+    """Plot input vs reconstruction for the first ``n`` samples."""
+    _ensure_deps()
+    n = min(n, len(inputs))
+    plt.figure(figsize=(6, 2 * n))
+    for i in range(n):
+        ax = plt.subplot(n, 1, i + 1)
+        ax.plot(inputs[i].reshape(-1), label="Input")
+        ax.plot(reconstructions[i].reshape(-1), label="Reconstruction", alpha=0.7)
+        ax.legend()
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+    plt.savefig(save_path)
+    plt.close()
+
+
 def plot_z_bank_tsne(model, loader, n_samples=500, save_path="z_bank_tsne.png"):
     """Visualize latent vectors stored in ``z_bank`` with t-SNE."""
     _ensure_deps()

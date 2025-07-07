@@ -117,6 +117,8 @@ def main():
                         help='log metrics every N CPD updates')
     parser.add_argument('--replay_plot', type=str, default=None,
                         help='optional path to save replay vs actual figure')
+    parser.add_argument('--inspect_mode', action='store_true',
+                        help='save intermediate tensors for debugging')
 
     def _parse_ranges(arg):
         if not arg:

@@ -35,11 +35,17 @@ class MLPDecoder(nn.Module):
             nn.Linear(d_model, enc_in),
         )
 
-    def forward(self, z: torch.Tensor) -> torch.Tensor:
-        # z: [B, L, latent_dim]
+    def forward(self, z: torch.Tensor, return_hidden: bool = False):
+        """Return reconstruction and optionally hidden activations."""
         B, L, _ = z.size()
-        out = self.net(z.view(B * L, -1))
-        return out.view(B, L, -1)
+        x = z.view(B * L, -1)
+        hidden = self.net[0](x)
+        hidden = self.net[1](hidden)
+        out = self.net[2](hidden)
+        out = out.view(B, L, -1)
+        if return_hidden:
+            return out, hidden.view(B, L, -1)
+        return out
 
 
 class RNNDecoder(nn.Module):
@@ -51,11 +57,14 @@ class RNNDecoder(nn.Module):
         self.rnn = nn.GRU(d_model, d_model, batch_first=True)
         self.out = nn.Linear(d_model, enc_in)
 
-    def forward(self, z: torch.Tensor) -> torch.Tensor:
+    def forward(self, z: torch.Tensor, return_hidden: bool = False):
         # z: [B, L, latent_dim]
         inputs = self.in_proj(z)
         out, _ = self.rnn(inputs)
-        return self.out(out)
+        result = self.out(out)
+        if return_hidden:
+            return result, out
+        return result
 
 
 class AttentionDecoder(nn.Module):
@@ -74,12 +83,15 @@ class AttentionDecoder(nn.Module):
         self.fc = nn.Linear(latent_dim, d_model)
         self.out = nn.Linear(d_model, enc_in)
 
-    def forward(self, z: torch.Tensor) -> torch.Tensor:
+    def forward(self, z: torch.Tensor, return_hidden: bool = False):
         # z: [B, L, latent_dim]
         tgt = self.fc(z)
         memory = torch.zeros_like(tgt)
         out = self.decoder(tgt, memory)
-        return self.out(out)
+        result = self.out(out)
+        if return_hidden:
+            return result, out
+        return result
 
 
 class ConditionalTransformerDecoder(nn.Module):
@@ -110,7 +122,8 @@ class ConditionalTransformerDecoder(nn.Module):
         self.cond_len = cond_len
         self.requires_condition = True
 
-    def forward(self, z: torch.Tensor, cond: torch.Tensor | None = None) -> torch.Tensor:
+    def forward(self, z: torch.Tensor, cond: torch.Tensor | None = None,
+                return_hidden: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         # z: [B, L, latent_dim]
         tgt = self.lat_proj(z) + self.pos_embed(z)
         if cond is not None:
@@ -119,7 +132,10 @@ class ConditionalTransformerDecoder(nn.Module):
         else:
             memory = torch.zeros(z.size(0), 1, tgt.size(-1), device=z.device)
         out = self.decoder(tgt, memory)
-        return self.out(out)
+        result = self.out(out)
+        if return_hidden:
+            return result, out
+        return result
 
 
 
@@ -235,7 +251,7 @@ class AnomalyTransformerAE(nn.Module):
             total += torch.mean(my_kl_loss(q.detach(), p))
         return total / len(prior)
 
-    def forward(self, x):
+    def forward(self, x, return_hidden: bool = False):
         """Forward pass returning reconstruction and attention info."""
         enc = self.embedding(x)
         enc, series, prior, _ = self.encoder(enc)
@@ -245,10 +261,13 @@ class AnomalyTransformerAE(nn.Module):
             z = z + noise
         if getattr(self.decoder, "requires_condition", False):
             cond = x[:, -self.decoder.cond_len :]
-            recon = self.decoder(z, cond)
+            recon = self.decoder(z, cond, return_hidden=return_hidden)
         else:
-            recon = self.decoder(z)
+            recon = self.decoder(z, return_hidden=return_hidden)
 
+        if return_hidden:
+            recon, dec_hidden = recon
+        
         # advance time step and store (input, latent) pairs for later replay
         self.current_step += 1
         for x_i, vec in zip(x, z):
@@ -262,6 +281,8 @@ class AnomalyTransformerAE(nn.Module):
 
         self.maybe_freeze_encoder()
 
+        if return_hidden:
+            return recon, series, prior, z, dec_hidden
         return recon, series, prior, z
 
     def loss_function(self, recon_x, x, weights: torch.Tensor | None = None):
