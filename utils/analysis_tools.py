@@ -3,6 +3,35 @@ import os
 # Default directory for efficiency visualization outputs
 DEFAULT_EFF_VIZ_DIR = "eff_viz"
 
+
+def _resolve_eff_viz_path(save_path: str | None, filename: str) -> str:
+    """Return absolute path for saving efficiency visualizations.
+
+    Parameters
+    ----------
+    save_path : str or None
+        Requested output path. If ``None`` or just a filename without a
+        directory component, the file will be stored inside
+        ``DEFAULT_EFF_VIZ_DIR``.
+    filename : str
+        Default file name to use when ``save_path`` is ``None``.
+
+    Returns
+    -------
+    str
+        Path pointing to the desired output location.
+    """
+
+    if save_path is None:
+        save_path = filename
+    # Only prepend the default directory when no directory information is
+    # provided by the caller. ``os.path.dirname`` returns an empty string in
+    # that case. This keeps absolute or explicitly relative directories
+    # untouched.
+    if not os.path.isabs(save_path) and os.path.dirname(save_path) == "":
+        save_path = os.path.join(DEFAULT_EFF_VIZ_DIR, save_path)
+    return save_path
+
 try:  # optional heavy deps are loaded lazily
     import numpy as np  # type: ignore
 except Exception:  # pragma: no cover - handled at runtime
@@ -522,7 +551,11 @@ def plot_rolling_stats(series, *, window=10, save_path="rolling_stats.png"):
 
 
 def plot_memory_usage_curve(steps, continual_mem, batch_mem, save_path="memory_usage.png"):
-    """Plot memory usage for continual vs batch learning over time."""
+    """Plot memory usage for continual vs batch learning over time.
+
+    When ``save_path`` does not specify a directory, the figure is saved under
+    ``DEFAULT_EFF_VIZ_DIR``.
+    """
     _ensure_deps()
     steps = np.asarray(steps)
     continual_mem = np.asarray(continual_mem)
@@ -537,15 +570,18 @@ def plot_memory_usage_curve(steps, continual_mem, batch_mem, save_path="memory_u
     plt.title("Memory Usage over Training")
     plt.legend()
     plt.tight_layout()
-    if save_path is None:
-        save_path = os.path.join(DEFAULT_EFF_VIZ_DIR, "memory_usage.png")
+    save_path = _resolve_eff_viz_path(save_path, "memory_usage.png")
     os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
     plt.savefig(save_path)
     plt.close()
 
 
 def plot_parameter_update_efficiency(param_counts, performance, *, labels=None, save_path="param_efficiency.png"):
-    """Plot model performance as a function of updated parameters."""
+    """Plot model performance as a function of updated parameters.
+
+    When ``save_path`` lacks directory information, the figure is written under
+    ``DEFAULT_EFF_VIZ_DIR``.
+    """
     _ensure_deps()
     param_counts = np.asarray(param_counts)
     performance = np.asarray(performance)
@@ -560,15 +596,18 @@ def plot_parameter_update_efficiency(param_counts, performance, *, labels=None, 
     plt.ylabel("Model Performance")
     plt.title("Parameter Update Efficiency")
     plt.tight_layout()
-    if save_path is None:
-        save_path = os.path.join(DEFAULT_EFF_VIZ_DIR, "param_efficiency.png")
+    save_path = _resolve_eff_viz_path(save_path, "param_efficiency.png")
     os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
     plt.savefig(save_path)
     plt.close()
 
 
 def plot_latency_vs_model_size(model_sizes, latencies, *, labels=None, save_path="latency_vs_size.png"):
-    """Plot inference latency as a function of model size."""
+    """Plot inference latency as a function of model size.
+
+    Figures are saved inside ``DEFAULT_EFF_VIZ_DIR`` when no directory is
+    specified for ``save_path``.
+    """
     _ensure_deps()
     model_sizes = np.asarray(model_sizes)
     latencies = np.asarray(latencies)
@@ -583,8 +622,7 @@ def plot_latency_vs_model_size(model_sizes, latencies, *, labels=None, save_path
     plt.ylabel("Inference Latency")
     plt.title("Latency vs Model Size")
     plt.tight_layout()
-    if save_path is None:
-        save_path = os.path.join(DEFAULT_EFF_VIZ_DIR, "latency_vs_size.png")
+    save_path = _resolve_eff_viz_path(save_path, "latency_vs_size.png")
     os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
     plt.savefig(save_path)
     plt.close()
