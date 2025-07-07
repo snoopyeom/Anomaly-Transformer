@@ -337,8 +337,11 @@ class Solver(object):
                 plot_reconstruction_per_sample,
             )
 
-            plot_latent_tsne(latents.view(latents.size(0) * latents.size(1), -1).numpy(),
-                             save_path=os.path.join(out_dir, "plot_latent_tsne.png"))
+            plot_latent_tsne(
+                latents.view(latents.size(0) * latents.size(1), -1).numpy(),
+                save_path=os.path.join(out_dir, "plot_latent_tsne.png"),
+                max_points=2000,
+            )
             plot_latent_pca(latents.view(latents.size(0) * latents.size(1), -1).numpy(),
                             save_path=os.path.join(out_dir, "plot_latent_pca.png"))
             plot_error_curve(errors.numpy(),
