@@ -77,7 +77,10 @@ class Solver(object):
         'store_mu': False,
         'freeze_after': None,
         'ema_decay': None,
-        'decoder_type': 'mlp',
+        'decoder_type': 'attention',
+        'latent_noise_std': 0.0,
+        'replay_consistency_weight': 0.0,
+        'high_freq_weight': 0.0,
         'anomaly_ratio': 1.0,
         'cpd_penalty': 20,
         'min_cpd_gap': 30,
@@ -133,7 +136,9 @@ class Solver(object):
                 replay_horizon=getattr(self, 'replay_horizon', None),
                 freeze_after=getattr(self, 'freeze_after', None),
                 ema_decay=getattr(self, 'ema_decay', None),
-                decoder_type=getattr(self, 'decoder_type', 'mlp'),
+                decoder_type=getattr(self, 'decoder_type', 'attention'),
+                latent_noise_std=getattr(self, 'latent_noise_std', 0.0),
+                high_freq_weight=getattr(self, 'high_freq_weight', 0.0),
             )
         else:
             self.model = AnomalyTransformer(
@@ -402,6 +407,9 @@ class Solver(object):
                         input,
                         cpd_penalty=getattr(self, 'cpd_penalty', 20),
                         min_gap=getattr(self, 'min_cpd_gap', 30),
+                        replay_consistency_weight=getattr(
+                            self, 'replay_consistency_weight', 0.0
+                        ),
                     )
                     loss1_list.append(loss)
                     if updated:

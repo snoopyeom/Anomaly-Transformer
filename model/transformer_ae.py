@@ -150,7 +150,8 @@ class AnomalyTransformerAE(nn.Module):
                  ema_decay: float | None = None,
                  decoder_type: str = 'mlp',
                  cond_len: int = 5,
-                 latent_noise_std: float = 0.0):
+                 latent_noise_std: float = 0.0,
+                 high_freq_weight: float = 0.0):
 
         super().__init__()
         self.win_size = win_size
@@ -163,6 +164,7 @@ class AnomalyTransformerAE(nn.Module):
         self.ema_decay = ema_decay
         self.encoder_frozen = False
         self.latent_noise_std = latent_noise_std
+        self.high_freq_weight = high_freq_weight
 
 
         # Transformer components
@@ -286,12 +288,16 @@ class AnomalyTransformerAE(nn.Module):
         return recon, series, prior, z
 
     def loss_function(self, recon_x, x, weights: torch.Tensor | None = None):
-        loss = F.mse_loss(recon_x, x, reduction="none")
-        loss = loss.mean(dim=(1, 2))
+        base = F.mse_loss(recon_x, x, reduction="none").mean(dim=(1, 2))
+        if self.high_freq_weight > 0:
+            diff_rec = recon_x[:, 1:] - recon_x[:, :-1]
+            diff_x = x[:, 1:] - x[:, :-1]
+            freq = F.mse_loss(diff_rec, diff_x, reduction="none").mean(dim=(1, 2))
+            base = base + self.high_freq_weight * freq
         if weights is not None:
             weights = weights / weights.mean()
-            loss = loss * weights
-        return loss.mean()
+            base = base * weights
+        return base.mean()
 
     def generate_replay_samples(
         self,
