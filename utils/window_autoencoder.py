@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 
+import numpy as np
+
 
 class WindowDataset(Dataset):
     """Wrap a base dataset of windows so that each item returns ``(x, x)``."""
@@ -33,6 +35,25 @@ class BasicWindowAutoencoder(nn.Module):
             nn.Linear(hidden, enc_in),
         )
 
+    def forward(self, x: torch.Tensor, *, return_hidden: bool = False):
+        """Return reconstruction and latent vectors.
+
+        When ``return_hidden`` is ``True`` the output also includes the
+        decoder's hidden representation after the first activation layer.
+        """
+
+        # x: [B, L, enc_in]
+        b, l, c = x.size()
+        flat = x.view(b * l, c)
+        z = self.encoder(flat)
+        h = self.decoder[0](z)
+        h = self.decoder[1](h)
+        recon = self.decoder[2](h).view(b, l, c)
+        z = z.view(b, l, -1)
+        if return_hidden:
+            h = h.view(b, l, -1)
+            return recon, z, h
+        return recon, z
     def forward(self, x: torch.Tensor):
         # x: [B, L, enc_in]
         b, l, c = x.size()
@@ -62,4 +83,25 @@ def train_window_autoencoder(
             optim.zero_grad()
             loss.backward()
             optim.step()
+
+def collect_autoencoder_details(model: BasicWindowAutoencoder, dataset: Dataset):
+    """Return latent vectors, decoder hidden states, and per-window MSE."""
+
+    loader = DataLoader(dataset, batch_size=1)
+    latents = []
+    hiddens = []
+    errors = []
+    loss_fn = nn.MSELoss()
+    model.eval()
+    with torch.no_grad():
+        for x, _ in loader:
+            recon, z, h = model(x, return_hidden=True)
+            latents.append(z.squeeze(0).cpu())
+            hiddens.append(h.squeeze(0).cpu())
+            errors.append(loss_fn(recon, x).item())
+
+    latents = torch.stack(latents).numpy()
+    hiddens = torch.stack(hiddens).numpy()
+    errors = np.array(errors)
+    return latents, hiddens, errors
 

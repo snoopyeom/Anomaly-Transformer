@@ -6,8 +6,9 @@ from utils.window_autoencoder import (
     BasicWindowAutoencoder,
     WindowDataset,
     train_window_autoencoder,
+    collect_autoencoder_details,
 )
-from utils.analysis_tools import plot_autoencoder_vs_series
+from utils.analysis_tools import plot_autoencoder_vs_series, plot_vector_projection
 
 
 def _make_dataset(win_size: int, n_windows: int = 10):
@@ -32,4 +33,17 @@ def test_plot_autoencoder_vs_series(tmp_path):
     train_window_autoencoder(ae, dataset, epochs=1, batch_size=2)
     out = tmp_path / "ae_vs_series.png"
     plot_autoencoder_vs_series(ae, dataset, series, end=20, save_path=str(out))
+    assert out.exists() and out.stat().st_size > 0
+
+
+def test_collect_details_and_projection(tmp_path):
+    dataset, _ = _make_dataset(win_size=6, n_windows=15)
+    ae = BasicWindowAutoencoder(enc_in=1, latent_dim=2)
+    train_window_autoencoder(ae, dataset, epochs=1, batch_size=2)
+    lat, hid, err = collect_autoencoder_details(ae, dataset)
+    assert lat.shape[0] == len(dataset)
+    assert hid.shape[0] == len(dataset)
+    assert err.shape == (len(dataset),)
+    out = tmp_path / "vec.png"
+    plot_vector_projection(lat, save_path=str(out))
     assert out.exists() and out.stat().st_size > 0

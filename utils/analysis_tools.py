@@ -713,3 +713,31 @@ def plot_latency_vs_model_size(model_sizes, latencies, *, labels=None, save_path
     plt.savefig(save_path)
     plt.close()
 
+
+def plot_vector_projection(vectors, *, method="tsne", title=None, save_path="projection.png"):
+    """Project a sequence of vectors with t-SNE or PCA and save a scatter plot."""
+
+    _ensure_deps()
+    arr = np.asarray(vectors)
+    arr = arr.reshape(-1, arr.shape[-1])
+    if method == "tsne":
+        reducer = TSNE(n_components=2, random_state=0)
+    elif method == "pca":
+        reducer = PCA(n_components=2)
+    else:
+        raise ValueError("method must be 'tsne' or 'pca'")
+    reduced = reducer.fit_transform(arr)
+
+    if title is None:
+        title = f"{method.upper()} Projection"
+
+    plt.figure()
+    plt.scatter(reduced[:, 0], reduced[:, 1], s=10)
+    plt.xlabel("Dim 1")
+    plt.ylabel("Dim 2")
+    plt.title(title)
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+    plt.savefig(save_path)
+    plt.close()
+

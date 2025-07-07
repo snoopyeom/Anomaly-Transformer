@@ -30,11 +30,16 @@ from utils.window_autoencoder import (
     WindowDataset,
     BasicWindowAutoencoder,
     train_window_autoencoder,
+
+    collect_autoencoder_details,
+
 )
 from utils.analysis_tools import (
     plot_reconstruction_tsne,
     plot_reconstruction_pca,
     plot_autoencoder_vs_series,
+    plot_vector_projection,
+
 )
 
 
@@ -76,6 +81,41 @@ def main() -> None:
         start=0,
         end=min(200, len(series)),
         save_path=os.path.join(out_dir, "recon_vs_series.png"),
+    )
+
+
+    latents, hidden, errors = collect_autoencoder_details(ae, dataset)
+    np.save(os.path.join(out_dir, "latents.npy"), latents)
+    np.save(os.path.join(out_dir, "hidden.npy"), hidden)
+    np.save(os.path.join(out_dir, "recon_errors.npy"), errors)
+
+    worst_idx = int(errors.argmax())
+    np.save(os.path.join(out_dir, "worst_window.npy"), dataset[worst_idx][0].numpy())
+    print(f"Worst reconstruction at index {worst_idx}")
+
+    plot_vector_projection(
+        latents,
+        method="tsne",
+        title="Latent t-SNE",
+        save_path=os.path.join(out_dir, "latent_tsne.png"),
+    )
+    plot_vector_projection(
+        latents,
+        method="pca",
+        title="Latent PCA",
+        save_path=os.path.join(out_dir, "latent_pca.png"),
+    )
+    plot_vector_projection(
+        hidden,
+        method="tsne",
+        title="Hidden t-SNE",
+        save_path=os.path.join(out_dir, "hidden_tsne.png"),
+    )
+    plot_vector_projection(
+        hidden,
+        method="pca",
+        title="Hidden PCA",
+        save_path=os.path.join(out_dir, "hidden_pca.png"),
     )
 
 

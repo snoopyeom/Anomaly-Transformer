@@ -177,6 +177,12 @@ qualitatively inspecting continual learning behavior.
   python -m scripts.raw_autoencoder_demo
   ```
   Adjust `--epochs`, `--latent_dim`, and other arguments to explore how well a
+  simple AE reconstructs the data. The demo now saves `latents.npy`,
+  `hidden.npy`, and `recon_errors.npy` for inspection. It also plots
+  `latent_tsne.png`, `latent_pca.png`, `hidden_tsne.png`, and `hidden_pca.png`
+  showing the encoder and decoder representations. The window with the largest
+  reconstruction error is stored in `worst_window.npy` and its index is printed
+  to the console.
   simple AE reconstructs the data.
 
 - `scripts/visualize_dataset_distribution.py` contrasts the training and test
