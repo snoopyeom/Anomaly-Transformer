@@ -453,7 +453,9 @@ def plot_autoencoder_vs_series(
     with torch.no_grad():
         for i in range(start, min(end - win_size + 1, len(dataset))):
             z, _ = dataset[i]
-            r = autoencoder(z.unsqueeze(0)).squeeze(0).cpu().numpy()[:, 0]
+            # ``BasicWindowAutoencoder`` returns a tuple ``(recon, latents)`` by
+            # default. Extract the reconstruction before squeezing.
+            r = autoencoder(z.unsqueeze(0))[0].squeeze(0).cpu().numpy()[:, 0]
             idx_start = i - start
             idx_end = idx_start + win_size
             if idx_end > max_len:
