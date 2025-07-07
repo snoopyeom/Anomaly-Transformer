@@ -1,5 +1,37 @@
 import os
 
+# Default directory for efficiency visualization outputs
+DEFAULT_EFF_VIZ_DIR = "eff_viz"
+
+
+def _resolve_eff_viz_path(save_path: str | None, filename: str) -> str:
+    """Return absolute path for saving efficiency visualizations.
+
+    Parameters
+    ----------
+    save_path : str or None
+        Requested output path. If ``None`` or just a filename without a
+        directory component, the file will be stored inside
+        ``DEFAULT_EFF_VIZ_DIR``.
+    filename : str
+        Default file name to use when ``save_path`` is ``None``.
+
+    Returns
+    -------
+    str
+        Path pointing to the desired output location.
+    """
+
+    if save_path is None:
+        save_path = filename
+    # Only prepend the default directory when no directory information is
+    # provided by the caller. ``os.path.dirname`` returns an empty string in
+    # that case. This keeps absolute or explicitly relative directories
+    # untouched.
+    if not os.path.isabs(save_path) and os.path.dirname(save_path) == "":
+        save_path = os.path.join(DEFAULT_EFF_VIZ_DIR, save_path)
+    return save_path
+
 try:  # optional heavy deps are loaded lazily
     import numpy as np  # type: ignore
 except Exception:  # pragma: no cover - handled at runtime
@@ -474,6 +506,30 @@ def plot_feature_distribution_by_segment(
     seg_data = []
     valid_labels = []
     for start, end in segments:
+
+def plot_feature_distribution_by_segment(data, segments, feature_index, save_path="feature_dist.png"):
+    """Plot feature distribution histograms for specified data segments.
+
+    Parameters
+    ----------
+    data : array-like
+        2D sequence with shape ``(time, features)``.
+    segments : list of tuple(int, int)
+        List of ``(start, end)`` index ranges.
+    feature_index : int
+        Which feature/column to visualize.
+    save_path : str, optional
+        Location where the figure will be saved.
+    """
+
+    _ensure_deps()
+
+    data = np.asarray(data)
+    if data.ndim != 2:
+        raise ValueError("data must be a 2D array")
+
+    plt.figure()
+    for i, (start, end) in enumerate(segments, 1):
         start = max(0, start)
         end = min(len(data), end)
         if start >= end:
@@ -487,6 +543,11 @@ def plot_feature_distribution_by_segment(
     plt.xlabel("Segment")
     plt.ylabel(f"Feature {feature}")
     plt.title("Feature Distribution by Segment")
+        values = data[start:end, feature_index]
+        plt.hist(values, bins=30, alpha=0.5, label=f"Segment {i}")
+    plt.xlabel(f"Feature {feature_index}")
+    plt.ylabel("Frequency")
+    plt.legend()
     plt.tight_layout()
     os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
     plt.savefig(save_path)
@@ -529,3 +590,113 @@ def plot_rolling_stats(
     os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
     plt.savefig(save_path)
     plt.close()
+def plot_rolling_stats(series, *, window=10, save_path="rolling_stats.png"):
+    """Plot rolling mean and standard deviation of a 1D sequence."""
+
+    _ensure_deps()
+
+    series = np.asarray(series, dtype=float).squeeze()
+    if series.ndim != 1:
+        raise ValueError("series must be 1D")
+    if window <= 0 or window > len(series):
+        raise ValueError("window must be between 1 and len(series)")
+
+    cumsum = np.cumsum(np.insert(series, 0, 0.0))
+    mean = (cumsum[window:] - cumsum[:-window]) / window
+
+    sq_cumsum = np.cumsum(np.insert(series ** 2, 0, 0.0))
+    var = (sq_cumsum[window:] - sq_cumsum[:-window]) / window - mean ** 2
+    var[var < 0] = 0.0
+    std = np.sqrt(var)
+
+    x_valid = np.arange(window - 1, len(series))
+    plt.figure()
+    plt.plot(np.arange(len(series)), series, label="Series", alpha=0.5)
+    plt.plot(x_valid, mean, label="Rolling Mean")
+    plt.fill_between(x_valid, mean - std, mean + std, color="orange", alpha=0.3, label="Rolling Std")
+    plt.xlabel("Time")
+    plt.title(f"Rolling Statistics (window={window})")
+    plt.legend()
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+    plt.savefig(save_path)
+    plt.close()
+
+
+def plot_memory_usage_curve(steps, continual_mem, batch_mem, save_path="memory_usage.png"):
+    """Plot memory usage for continual vs batch learning over time.
+
+    When ``save_path`` does not specify a directory, the figure is saved under
+    ``DEFAULT_EFF_VIZ_DIR``.
+    """
+    _ensure_deps()
+    steps = np.asarray(steps)
+    continual_mem = np.asarray(continual_mem)
+    batch_mem = np.asarray(batch_mem)
+    if steps.ndim != 1 or continual_mem.shape != steps.shape or batch_mem.shape != steps.shape:
+        raise ValueError("inputs must be 1D arrays of the same length")
+    plt.figure()
+    plt.plot(steps, continual_mem, label="Continual")
+    plt.plot(steps, batch_mem, label="Batch")
+    plt.xlabel("Training Step")
+    plt.ylabel("Memory Usage")
+    plt.title("Memory Usage over Training")
+    plt.legend()
+    plt.tight_layout()
+    save_path = _resolve_eff_viz_path(save_path, "memory_usage.png")
+    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+    plt.savefig(save_path)
+    plt.close()
+
+
+def plot_parameter_update_efficiency(param_counts, performance, *, labels=None, save_path="param_efficiency.png"):
+    """Plot model performance as a function of updated parameters.
+
+    When ``save_path`` lacks directory information, the figure is written under
+    ``DEFAULT_EFF_VIZ_DIR``.
+    """
+    _ensure_deps()
+    param_counts = np.asarray(param_counts)
+    performance = np.asarray(performance)
+    if param_counts.ndim != 1 or performance.shape != param_counts.shape:
+        raise ValueError("param_counts and performance must be 1D arrays of the same length")
+    plt.figure()
+    plt.scatter(param_counts, performance)
+    if labels is not None:
+        for x, y, text in zip(param_counts, performance, labels):
+            plt.text(x, y, str(text))
+    plt.xlabel("Updated Parameters")
+    plt.ylabel("Model Performance")
+    plt.title("Parameter Update Efficiency")
+    plt.tight_layout()
+    save_path = _resolve_eff_viz_path(save_path, "param_efficiency.png")
+    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+    plt.savefig(save_path)
+    plt.close()
+
+
+def plot_latency_vs_model_size(model_sizes, latencies, *, labels=None, save_path="latency_vs_size.png"):
+    """Plot inference latency as a function of model size.
+
+    Figures are saved inside ``DEFAULT_EFF_VIZ_DIR`` when no directory is
+    specified for ``save_path``.
+    """
+    _ensure_deps()
+    model_sizes = np.asarray(model_sizes)
+    latencies = np.asarray(latencies)
+    if model_sizes.ndim != 1 or latencies.shape != model_sizes.shape:
+        raise ValueError("model_sizes and latencies must be 1D arrays of the same length")
+    plt.figure()
+    plt.scatter(model_sizes, latencies)
+    if labels is not None:
+        for x, y, text in zip(model_sizes, latencies, labels):
+            plt.text(x, y, str(text))
+    plt.xlabel("Model Size")
+    plt.ylabel("Inference Latency")
+    plt.title("Latency vs Model Size")
+    plt.tight_layout()
+    save_path = _resolve_eff_viz_path(save_path, "latency_vs_size.png")
+    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+    plt.savefig(save_path)
+    plt.close()
+
