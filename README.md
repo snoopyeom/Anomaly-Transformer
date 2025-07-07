@@ -167,6 +167,15 @@ qualitatively inspecting continual learning behavior.
   python -m scripts.zbank_autoencoder_demo
   ```
 
+- `scripts/visualize_dataset_distribution.py` contrasts the training and test
+  splits of the benchmark datasets (SMD, SMAP, MSL, PSM) using
+  `plot_projection_by_segment`. Provide the dataset name and path and it will
+  save a scatter plot like `smd_tsne_segments.png`. Example usage:
+
+  ```bash
+  python -m scripts.visualize_dataset_distribution --dataset SMD --data_path dataset/SMD
+  ```
+
 
 Directories in the provided `save_path` are created automatically, so you can
 use paths such as `outputs/z_bank_tsne.png` without pre-creating the folder.
