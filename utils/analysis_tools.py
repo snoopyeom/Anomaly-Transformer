@@ -147,9 +147,17 @@ def _scatter_projection(orig_latents, replay_latents, reduced, title, save_path)
     plt.close()
 
 
-def plot_latent_tsne(latents, save_path="plot_latent_tsne.png"):
-    """Visualize latent vectors using t-SNE."""
+def plot_latent_tsne(latents, save_path="plot_latent_tsne.png", max_points=2000):
+    """Visualize latent vectors using t-SNE.
+
+    When ``latents`` contains more than ``max_points`` rows, a random subset
+    of that many vectors is used to avoid excessive computation.
+    """
     _ensure_deps()
+    latents = np.asarray(latents)
+    if max_points is not None and len(latents) > max_points:
+        idx = np.random.choice(len(latents), max_points, replace=False)
+        latents = latents[idx]
     reduced = TSNE(n_components=2, random_state=0).fit_transform(latents)
     plt.figure()
     plt.scatter(reduced[:, 0], reduced[:, 1], s=10)
