@@ -166,6 +166,23 @@ qualitatively inspecting continual learning behavior.
   ```bash
   python -m scripts.zbank_autoencoder_demo
   ```
+  You can supply `--load_model path/to/checkpoint.pth` to build the
+  `z_bank` from pretrained weights and `--ae_epochs` to control how long the
+  lightweight autoencoder trains.
+
+- `scripts/raw_autoencoder_demo.py` trains an encoder+decoder autoencoder
+  directly on windowed time series without relying on a `z_bank`. Usage:
+
+  ```bash
+  python -m scripts.raw_autoencoder_demo
+  ```
+  Adjust `--epochs`, `--latent_dim`, and other arguments to explore how well a
+  simple AE reconstructs the data. The demo now saves `latents.npy`,
+  `hidden.npy`, and `recon_errors.npy` for inspection. It also plots
+  `latent_tsne.png`, `latent_pca.png`, `hidden_tsne.png`, and `hidden_pca.png`
+  showing the encoder and decoder representations. The window with the largest
+  reconstruction error is stored in `worst_window.npy` and its index is printed
+  to the console.
 
 - `scripts/visualize_dataset_distribution.py` contrasts the training and test
   splits of the benchmark datasets (SMD, SMAP, MSL, PSM) using

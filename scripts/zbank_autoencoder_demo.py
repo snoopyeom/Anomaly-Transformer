@@ -40,6 +40,15 @@ def _load_z_bank(path: str):
     return torch.load(path)
 
 
+def _load_model_weights(model: AnomalyTransformerAE, path: str) -> None:
+    if os.path.isfile(path):
+        state = torch.load(path, map_location="cpu")
+        model.load_state_dict(state)
+        print(f"Loaded pretrained model from {path}")
+    else:
+        raise FileNotFoundError(path)
+
+
 def _save_z_bank(z_bank, path: str) -> None:
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     torch.save(z_bank, path)
@@ -59,6 +68,8 @@ def main() -> None:
     parser.add_argument("--win_size", type=int, default=100, help="window size")
     parser.add_argument("--latent_dim", type=int, default=4, help="latent dimension")
     parser.add_argument("--z_bank", type=str, default=None, help="optional path to load/save z_bank")
+    parser.add_argument("--load_model", type=str, default=None, help="pretrained model checkpoint")
+    parser.add_argument("--ae_epochs", type=int, default=10, help="autoencoder training epochs")
     args = parser.parse_args()
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -87,6 +98,9 @@ def main() -> None:
         replay_size=200,
     )
 
+    if args.load_model:
+        _load_model_weights(model, args.load_model)
+
     if args.z_bank and os.path.isfile(args.z_bank):
         model.z_bank = _load_z_bank(args.z_bank)
     else:
@@ -98,7 +112,7 @@ def main() -> None:
 
     dataset = ZBankDataset(model.z_bank)
     ae = ZBankAutoencoder(latent_dim=args.latent_dim, enc_in=enc_in, win_size=args.win_size)
-    train_autoencoder(ae, dataset, epochs=10, batch_size=16)
+    train_autoencoder(ae, dataset, epochs=args.ae_epochs, batch_size=16)
 
     plot_reconstruction_tsne(ae, dataset, save_path=os.path.join(out_dir, "recon_tsne.png"))
     plot_reconstruction_pca(ae, dataset, save_path=os.path.join(out_dir, "recon_pca.png"))
