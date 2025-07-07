@@ -166,6 +166,18 @@ qualitatively inspecting continual learning behavior.
   ```bash
   python -m scripts.zbank_autoencoder_demo
   ```
+  You can supply `--load_model path/to/checkpoint.pth` to build the
+  `z_bank` from pretrained weights and `--ae_epochs` to control how long the
+  lightweight autoencoder trains.
+
+- `scripts/raw_autoencoder_demo.py` trains an encoder+decoder autoencoder
+  directly on windowed time series without relying on a `z_bank`. Usage:
+
+  ```bash
+  python -m scripts.raw_autoencoder_demo
+  ```
+  Adjust `--epochs`, `--latent_dim`, and other arguments to explore how well a
+  simple AE reconstructs the data.
 
 - `scripts/visualize_dataset_distribution.py` contrasts the training and test
   splits of the benchmark datasets (SMD, SMAP, MSL, PSM) using
