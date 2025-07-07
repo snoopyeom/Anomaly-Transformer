@@ -527,7 +527,7 @@ def plot_feature_distribution_by_segment(
 
 def plot_rolling_stats(
     data,
-    feature=0,
+    feature=None,
     window=50,
     save_path=os.path.join(DEFAULT_RAW_VIZ_DIR, "rolling_stats.png"),
 ):
@@ -567,7 +567,7 @@ def plot_projection_by_segment(
     data,
     segments,
     *,
-    feature=0,
+    feature=None,
     method="tsne",
     save_path=None,
 ):
@@ -579,8 +579,9 @@ def plot_projection_by_segment(
         Raw sequence to analyze.
     segments : list of tuple(int, int)
         Each ``(start, end)`` pair defines a slice ``data[start:end]``.
-    feature : int, optional
-        Index of the feature to visualize when ``data`` is 2D.
+    feature : int or None, optional
+        Index of the feature to visualize when ``data`` is 2D. ``None`` uses all
+        features and is the default when the input has multiple dimensions.
     method : {"tsne", "pca"}, optional
         Dimensionality reduction technique to apply.
     save_path : str, optional
@@ -601,7 +602,10 @@ def plot_projection_by_segment(
         end = min(len(data), end)
         if start >= end:
             continue
-        seg = data[start:end, feature]
+        if feature is None:
+            seg = data[start:end]
+        else:
+            seg = data[start:end, feature]
         seg = seg.reshape(len(seg), -1)
         points.append(seg)
         labels.append(np.full(len(seg), idx))
