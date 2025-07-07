@@ -563,6 +563,75 @@ def plot_rolling_stats(
     plt.close()
 
 
+def plot_projection_by_segment(
+    data,
+    segments,
+    *,
+    feature=0,
+    method="tsne",
+    save_path=None,
+):
+    """Visualize raw data segments with t-SNE or PCA.
+
+    Parameters
+    ----------
+    data : array-like of shape (time, features) or (time,)
+        Raw sequence to analyze.
+    segments : list of tuple(int, int)
+        Each ``(start, end)`` pair defines a slice ``data[start:end]``.
+    feature : int, optional
+        Index of the feature to visualize when ``data`` is 2D.
+    method : {"tsne", "pca"}, optional
+        Dimensionality reduction technique to apply.
+    save_path : str, optional
+        Figure location. Defaults to ``dataset_dist_proof/<method>_segments.png``.
+    """
+    _ensure_deps()
+    if save_path is None:
+        save_path = os.path.join(DEFAULT_RAW_VIZ_DIR, f"{method}_segments.png")
+
+    data = np.asarray(data)
+    if data.ndim == 1:
+        data = data[:, None]
+
+    points = []
+    labels = []
+    for idx, (start, end) in enumerate(segments):
+        start = max(0, start)
+        end = min(len(data), end)
+        if start >= end:
+            continue
+        seg = data[start:end, feature]
+        seg = seg.reshape(len(seg), -1)
+        points.append(seg)
+        labels.append(np.full(len(seg), idx))
+    if not points:
+        raise ValueError("No valid segments provided")
+
+    combined = np.concatenate(points, axis=0)
+    label_arr = np.concatenate(labels)
+
+    if method == "tsne":
+        reducer = TSNE(n_components=2, random_state=0)
+    elif method == "pca":
+        reducer = PCA(n_components=2)
+    else:
+        raise ValueError("method must be 'tsne' or 'pca'")
+
+    reduced = reducer.fit_transform(combined)
+
+    plt.figure()
+    sc = plt.scatter(reduced[:, 0], reduced[:, 1], c=label_arr, cmap="tab10", s=10)
+    plt.xlabel("Dim 1")
+    plt.ylabel("Dim 2")
+    plt.title(f"{method.upper()} by Segment")
+    plt.colorbar(sc, label="Segment")
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+    plt.savefig(save_path)
+    plt.close()
+
+
 def plot_memory_usage_curve(steps, continual_mem, batch_mem, save_path="memory_usage.png"):
     """Plot memory usage for continual vs batch learning over time.
 
