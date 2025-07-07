@@ -522,6 +522,7 @@ def plot_rolling_stats(series, *, window=10, save_path="rolling_stats.png"):
 
 
 def plot_memory_usage_curve(steps, continual_mem, batch_mem, save_path=None):
+def plot_memory_usage_curve(steps, continual_mem, batch_mem, save_path="memory_usage.png"):
     """Plot memory usage for continual vs batch learning over time."""
     _ensure_deps()
     steps = np.asarray(steps)
@@ -545,6 +546,7 @@ def plot_memory_usage_curve(steps, continual_mem, batch_mem, save_path=None):
 
 
 def plot_parameter_update_efficiency(param_counts, performance, *, labels=None, save_path=None):
+def plot_parameter_update_efficiency(param_counts, performance, *, labels=None, save_path="param_efficiency.png"):
     """Plot model performance as a function of updated parameters."""
     _ensure_deps()
     param_counts = np.asarray(param_counts)
@@ -568,6 +570,7 @@ def plot_parameter_update_efficiency(param_counts, performance, *, labels=None, 
 
 
 def plot_latency_vs_model_size(model_sizes, latencies, *, labels=None, save_path=None):
+def plot_latency_vs_model_size(model_sizes, latencies, *, labels=None, save_path="latency_vs_size.png"):
     """Plot inference latency as a function of model size."""
     _ensure_deps()
     model_sizes = np.asarray(model_sizes)
