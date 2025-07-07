@@ -506,30 +506,6 @@ def plot_feature_distribution_by_segment(
     seg_data = []
     valid_labels = []
     for start, end in segments:
-
-def plot_feature_distribution_by_segment(data, segments, feature_index, save_path="feature_dist.png"):
-    """Plot feature distribution histograms for specified data segments.
-
-    Parameters
-    ----------
-    data : array-like
-        2D sequence with shape ``(time, features)``.
-    segments : list of tuple(int, int)
-        List of ``(start, end)`` index ranges.
-    feature_index : int
-        Which feature/column to visualize.
-    save_path : str, optional
-        Location where the figure will be saved.
-    """
-
-    _ensure_deps()
-
-    data = np.asarray(data)
-    if data.ndim != 2:
-        raise ValueError("data must be a 2D array")
-
-    plt.figure()
-    for i, (start, end) in enumerate(segments, 1):
         start = max(0, start)
         end = min(len(data), end)
         if start >= end:
@@ -543,11 +519,6 @@ def plot_feature_distribution_by_segment(data, segments, feature_index, save_pat
     plt.xlabel("Segment")
     plt.ylabel(f"Feature {feature}")
     plt.title("Feature Distribution by Segment")
-        values = data[start:end, feature_index]
-        plt.hist(values, bins=30, alpha=0.5, label=f"Segment {i}")
-    plt.xlabel(f"Feature {feature_index}")
-    plt.ylabel("Frequency")
-    plt.legend()
     plt.tight_layout()
     os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
     plt.savefig(save_path)
@@ -585,37 +556,6 @@ def plot_rolling_stats(
     plt.plot(x, stds, label="std")
     plt.xlabel("Time")
     plt.title("Rolling Statistics")
-    plt.legend()
-    plt.tight_layout()
-    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
-    plt.savefig(save_path)
-    plt.close()
-def plot_rolling_stats(series, *, window=10, save_path="rolling_stats.png"):
-    """Plot rolling mean and standard deviation of a 1D sequence."""
-
-    _ensure_deps()
-
-    series = np.asarray(series, dtype=float).squeeze()
-    if series.ndim != 1:
-        raise ValueError("series must be 1D")
-    if window <= 0 or window > len(series):
-        raise ValueError("window must be between 1 and len(series)")
-
-    cumsum = np.cumsum(np.insert(series, 0, 0.0))
-    mean = (cumsum[window:] - cumsum[:-window]) / window
-
-    sq_cumsum = np.cumsum(np.insert(series ** 2, 0, 0.0))
-    var = (sq_cumsum[window:] - sq_cumsum[:-window]) / window - mean ** 2
-    var[var < 0] = 0.0
-    std = np.sqrt(var)
-
-    x_valid = np.arange(window - 1, len(series))
-    plt.figure()
-    plt.plot(np.arange(len(series)), series, label="Series", alpha=0.5)
-    plt.plot(x_valid, mean, label="Rolling Mean")
-    plt.fill_between(x_valid, mean - std, mean + std, color="orange", alpha=0.3, label="Rolling Std")
-    plt.xlabel("Time")
-    plt.title(f"Rolling Statistics (window={window})")
     plt.legend()
     plt.tight_layout()
     os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
