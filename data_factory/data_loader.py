@@ -57,18 +57,36 @@ class PSMSegLoader(object):
             return (self.test.shape[0] - self.win_size) // self.win_size + 1
 
     def __getitem__(self, index):
-        index = index * self.step
+        pos = index * self.step
         if self.mode == "train":
-            return np.float32(self.train[index:index + self.win_size]), np.float32(self.test_labels[0:self.win_size])
+            return (
+                np.float32(self.train[pos : pos + self.win_size]),
+                np.float32(self.test_labels[0 : self.win_size]),
+                pos,
+            )
         elif (self.mode == 'val'):
-            return np.float32(self.val[index:index + self.win_size]), np.float32(self.test_labels[0:self.win_size])
+            return (
+                np.float32(self.val[pos : pos + self.win_size]),
+                np.float32(self.test_labels[0 : self.win_size]),
+                pos,
+            )
         elif (self.mode == 'test'):
-            return np.float32(self.test[index:index + self.win_size]), np.float32(
-                self.test_labels[index:index + self.win_size])
+            return (
+                np.float32(self.test[pos : pos + self.win_size]),
+                np.float32(self.test_labels[pos : pos + self.win_size]),
+                pos,
+            )
         else:
-            return np.float32(self.test[
-                              index // self.step * self.win_size:index // self.step * self.win_size + self.win_size]), np.float32(
-                self.test_labels[index // self.step * self.win_size:index // self.step * self.win_size + self.win_size])
+            pos = index // self.step * self.win_size
+            return (
+                np.float32(
+                    self.test[pos : pos + self.win_size]
+                ),
+                np.float32(
+                    self.test_labels[pos : pos + self.win_size]
+                ),
+                pos,
+            )
 
 
 class MSLSegLoader(object):
@@ -102,18 +120,36 @@ class MSLSegLoader(object):
             return (self.test.shape[0] - self.win_size) // self.win_size + 1
 
     def __getitem__(self, index):
-        index = index * self.step
+        pos = index * self.step
         if self.mode == "train":
-            return np.float32(self.train[index:index + self.win_size]), np.float32(self.test_labels[0:self.win_size])
+            return (
+                np.float32(self.train[pos : pos + self.win_size]),
+                np.float32(self.test_labels[0 : self.win_size]),
+                pos,
+            )
         elif (self.mode == 'val'):
-            return np.float32(self.val[index:index + self.win_size]), np.float32(self.test_labels[0:self.win_size])
+            return (
+                np.float32(self.val[pos : pos + self.win_size]),
+                np.float32(self.test_labels[0 : self.win_size]),
+                pos,
+            )
         elif (self.mode == 'test'):
-            return np.float32(self.test[index:index + self.win_size]), np.float32(
-                self.test_labels[index:index + self.win_size])
+            return (
+                np.float32(self.test[pos : pos + self.win_size]),
+                np.float32(self.test_labels[pos : pos + self.win_size]),
+                pos,
+            )
         else:
-            return np.float32(self.test[
-                              index // self.step * self.win_size:index // self.step * self.win_size + self.win_size]), np.float32(
-                self.test_labels[index // self.step * self.win_size:index // self.step * self.win_size + self.win_size])
+            pos = index // self.step * self.win_size
+            return (
+                np.float32(
+                    self.test[pos : pos + self.win_size]
+                ),
+                np.float32(
+                    self.test_labels[pos : pos + self.win_size]
+                ),
+                pos,
+            )
 
 
 class SMAPSegLoader(object):
@@ -147,18 +183,36 @@ class SMAPSegLoader(object):
             return (self.test.shape[0] - self.win_size) // self.win_size + 1
 
     def __getitem__(self, index):
-        index = index * self.step
+        pos = index * self.step
         if self.mode == "train":
-            return np.float32(self.train[index:index + self.win_size]), np.float32(self.test_labels[0:self.win_size])
+            return (
+                np.float32(self.train[pos : pos + self.win_size]),
+                np.float32(self.test_labels[0 : self.win_size]),
+                pos,
+            )
         elif (self.mode == 'val'):
-            return np.float32(self.val[index:index + self.win_size]), np.float32(self.test_labels[0:self.win_size])
+            return (
+                np.float32(self.val[pos : pos + self.win_size]),
+                np.float32(self.test_labels[0 : self.win_size]),
+                pos,
+            )
         elif (self.mode == 'test'):
-            return np.float32(self.test[index:index + self.win_size]), np.float32(
-                self.test_labels[index:index + self.win_size])
+            return (
+                np.float32(self.test[pos : pos + self.win_size]),
+                np.float32(self.test_labels[pos : pos + self.win_size]),
+                pos,
+            )
         else:
-            return np.float32(self.test[
-                              index // self.step * self.win_size:index // self.step * self.win_size + self.win_size]), np.float32(
-                self.test_labels[index // self.step * self.win_size:index // self.step * self.win_size + self.win_size])
+            pos = index // self.step * self.win_size
+            return (
+                np.float32(
+                    self.test[pos : pos + self.win_size]
+                ),
+                np.float32(
+                    self.test_labels[pos : pos + self.win_size]
+                ),
+                pos,
+            )
 
 
 class SMDSegLoader(object):
@@ -191,18 +245,36 @@ class SMDSegLoader(object):
             return (self.test.shape[0] - self.win_size) // self.win_size + 1
 
     def __getitem__(self, index):
-        index = index * self.step
+        pos = index * self.step
         if self.mode == "train":
-            return np.float32(self.train[index:index + self.win_size]), np.float32(self.test_labels[0:self.win_size])
+            return (
+                np.float32(self.train[pos : pos + self.win_size]),
+                np.float32(self.test_labels[0 : self.win_size]),
+                pos,
+            )
         elif (self.mode == 'val'):
-            return np.float32(self.val[index:index + self.win_size]), np.float32(self.test_labels[0:self.win_size])
+            return (
+                np.float32(self.val[pos : pos + self.win_size]),
+                np.float32(self.test_labels[0 : self.win_size]),
+                pos,
+            )
         elif (self.mode == 'test'):
-            return np.float32(self.test[index:index + self.win_size]), np.float32(
-                self.test_labels[index:index + self.win_size])
+            return (
+                np.float32(self.test[pos : pos + self.win_size]),
+                np.float32(self.test_labels[pos : pos + self.win_size]),
+                pos,
+            )
         else:
-            return np.float32(self.test[
-                              index // self.step * self.win_size:index // self.step * self.win_size + self.win_size]), np.float32(
-                self.test_labels[index // self.step * self.win_size:index // self.step * self.win_size + self.win_size])
+            pos = index // self.step * self.win_size
+            return (
+                np.float32(
+                    self.test[pos : pos + self.win_size]
+                ),
+                np.float32(
+                    self.test_labels[pos : pos + self.win_size]
+                ),
+                pos,
+            )
 
 
 def get_loader_segment(data_path, batch_size, win_size=100, step=100, mode='train', dataset='KDD', train_start=0.0, train_end=1.0):

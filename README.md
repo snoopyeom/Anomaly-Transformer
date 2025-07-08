@@ -77,7 +77,10 @@ approach leverages the VAE branch to mitigate concept drift.
 - `--store_mu`: store `(mu, logvar)` pairs instead of sampled `z` for replay.
 - `--freeze_after`: freeze the encoder after this many updates (default `None`).
 - `--ema_decay`: apply EMA to encoder weights with this decay (default `None`).
-- `--decoder_type`: choose decoder architecture: `mlp`, `rnn`, or `attention`.
+- `--decoder_type`: choose decoder architecture: `conditional`, `mlp`, `rnn`, or `attention` (default `conditional`).
+- `--latent_noise_std`: standard deviation of Gaussian noise added to latent vectors during training (default `0`).
+- `--replay_consistency_weight`: strength of the auxiliary loss ensuring stored latents decode consistently (default `0`).
+- `--high_freq_weight`: emphasize high-frequency reconstruction errors with this weight (default `0`).
 - `--min_cpd_gap`: minimum separation between detected change points (default
   `30`).
 - `--cpd_log_interval`: evaluate and print metrics only after this many CPD
