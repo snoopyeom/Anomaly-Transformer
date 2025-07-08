@@ -60,7 +60,7 @@ def _save_z_bank(z_bank, path: str) -> None:
 
 def _build_z_bank(model: AnomalyTransformerAE, loader: DataLoader):
     with torch.no_grad():
-        for batch, _ in loader:
+        for batch, *_ in loader:
             model(batch)
     return model.z_bank
 
