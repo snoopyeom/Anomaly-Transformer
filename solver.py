@@ -151,7 +151,7 @@ class Solver(object):
 
         loss_1 = []
         loss_2 = []
-        for i, (input_data, _) in enumerate(vali_loader):
+        for i, (input_data, _, _) in enumerate(vali_loader):
             input = input_data.float().to(self.device)
             output, series, prior, _ = self.model(input)
             series_loss = 0.0
@@ -195,7 +195,7 @@ class Solver(object):
 
         # energies on train set
         attens_energy = []
-        for i, (input_data, labels) in enumerate(self.train_loader):
+        for i, (input_data, labels, _) in enumerate(self.train_loader):
             input = input_data.float().to(self.device)
             output, series, prior, _ = self.model(input)
             loss = torch.mean(criterion(input, output), dim=-1)
@@ -227,7 +227,7 @@ class Solver(object):
         # energies on threshold loader
         attens_energy = []
         test_labels = []
-        for i, (input_data, labels) in enumerate(self.thre_loader):
+        for i, (input_data, labels, _) in enumerate(self.thre_loader):
             input = input_data.float().to(self.device)
             output, series, prior, _ = self.model(input)
             loss = torch.mean(criterion(input, output), dim=-1)
@@ -390,7 +390,7 @@ class Solver(object):
 
             epoch_time = time.time()
             self.model.train()
-            for i, (input_data, labels) in enumerate(self.train_loader):
+            for i, (input_data, labels, indices) in enumerate(self.train_loader):
 
                 iter_count += 1
                 input = input_data.float().to(self.device)
@@ -400,6 +400,7 @@ class Solver(object):
                         self.model,
                         self.optimizer,
                         input,
+                        indices=indices,
                         cpd_penalty=getattr(self, 'cpd_penalty', 20),
                         min_gap=getattr(self, 'min_cpd_gap', 30),
                     )
@@ -561,7 +562,7 @@ class Solver(object):
 
         # (1) stastic on the train set
         attens_energy = []
-        for i, (input_data, labels) in enumerate(self.train_loader):
+        for i, (input_data, labels, _) in enumerate(self.train_loader):
             input = input_data.float().to(self.device)
             output, series, prior, _ = self.model(input)
             loss = torch.mean(criterion(input, output), dim=-1)
@@ -595,7 +596,7 @@ class Solver(object):
 
         # (2) find the threshold
         attens_energy = []
-        for i, (input_data, labels) in enumerate(self.thre_loader):
+        for i, (input_data, labels, _) in enumerate(self.thre_loader):
             input = input_data.float().to(self.device)
             output, series, prior, _ = self.model(input)
 
@@ -635,7 +636,7 @@ class Solver(object):
         # (3) evaluation on the test set
         test_labels = []
         attens_energy = []
-        for i, (input_data, labels) in enumerate(self.thre_loader):
+        for i, (input_data, labels, _) in enumerate(self.thre_loader):
             input = input_data.float().to(self.device)
             output, series, prior, _ = self.model(input)
 

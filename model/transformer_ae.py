@@ -251,7 +251,7 @@ class AnomalyTransformerAE(nn.Module):
             total += torch.mean(my_kl_loss(q.detach(), p))
         return total / len(prior)
 
-    def forward(self, x, return_hidden: bool = False):
+    def forward(self, x, indices: torch.Tensor | None = None, return_hidden: bool = False):
         """Forward pass returning reconstruction and attention info."""
         enc = self.embedding(x)
         enc, series, prior, _ = self.encoder(enc)
@@ -270,13 +270,18 @@ class AnomalyTransformerAE(nn.Module):
         
         # advance time step and store (input, latent) pairs for later replay
         self.current_step += 1
-        for x_i, vec in zip(x, z):
-            self.z_bank.append({
+        for idx, (x_i, vec) in enumerate(zip(x, z)):
+            entry = {
                 "x": x_i.detach().cpu(),
                 "z": vec.detach().cpu(),
                 "step": self.current_step,
                 "usage": 0,
-            })
+            }
+            if indices is not None and idx < len(indices):
+                pos = int(indices[idx])
+                if pos >= 0:
+                    entry["pos"] = pos
+            self.z_bank.append(entry)
         self._purge_z_bank()
 
         self.maybe_freeze_encoder()
@@ -385,7 +390,7 @@ class AnomalyTransformerAE(nn.Module):
         self._purge_z_bank()
         if len(self.z_bank) == 0:
             return None
-        ordered = sorted(self.z_bank, key=lambda t: t["step"])
+        ordered = sorted(self.z_bank, key=lambda t: t.get("pos", t["step"]))
         device = next(self.parameters()).device
         z = torch.stack([t["z"] for t in ordered]).to(device)
         with torch.no_grad():
@@ -409,6 +414,8 @@ def train_model_with_replay(
     model: AnomalyTransformerAE,
     optimizer: torch.optim.Optimizer,
     current_data: torch.Tensor,
+    *,
+    indices: torch.Tensor | None = None,
     cpd_penalty: int = 20,
     min_gap: int = 30,
     replay_consistency_weight: float = 0.0,
@@ -417,6 +424,7 @@ def train_model_with_replay(
     """Train model with replay based on detected concept drift."""
     model.train()
     data = current_data
+    indices_all = indices
     weights = torch.ones(len(current_data), device=current_data.device)
     drift_detected = False
     if rpt is not None:
@@ -440,9 +448,14 @@ def train_model_with_replay(
                 replay_samples, replay_weights = replay
                 data = torch.cat([current_data, replay_samples], dim=0)
                 weights = torch.cat([weights, replay_weights.to(current_data.device)])
+                if indices is not None:
+                    pad = torch.full(
+                        (len(replay_samples),), -1, dtype=indices.dtype, device=indices.device
+                    )
+                    indices_all = torch.cat([indices, pad])
     else:
         warnings.warn("ruptures not installed; CPD updates will not run")
-    recon, _, _, _ = model(data)
+    recon, _, _, _ = model(data, indices=indices_all)
     loss = model.loss_function(recon, data, weights=weights)
     if replay_consistency_weight > 0 and model.z_bank:
         device = current_data.device
