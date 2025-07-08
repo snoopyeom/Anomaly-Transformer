@@ -311,7 +311,7 @@ class Solver(object):
         errors = []
         inputs_all = []
         with torch.no_grad():
-            for batch, _ in self.train_loader:
+            for batch, *_ in self.train_loader:
                 batch = batch.float().to(self.device)
                 result = self.model(batch, return_hidden=True)
                 recon, _, _, z, hid = result
