@@ -292,8 +292,13 @@ class Solver(object):
         gt = np.array(gt)
 
         precision, recall, f_score, _ = precision_recall_fscore_support(
-            gt, pred, average='binary')
-        auc = roc_auc_score(gt, attens_energy)
+            gt, pred, average='binary', zero_division=0)
+        if len(np.unique(gt)) < 2:
+            warnings.warn(
+                "Only one class present in y_true. ROC AUC score is undefined.")
+            auc = float('nan')
+        else:
+            auc = roc_auc_score(gt, attens_energy)
         return f_score, auc
 
     def collect_debug_info(self, out_dir: str) -> None:
@@ -710,9 +715,14 @@ class Solver(object):
         from sklearn.metrics import precision_recall_fscore_support
         from sklearn.metrics import accuracy_score, roc_auc_score
         accuracy = accuracy_score(gt, pred)
-        precision, recall, f_score, support = precision_recall_fscore_support(gt, pred,
-                                                                              average='binary')
-        auc = roc_auc_score(gt, test_energy)
+        precision, recall, f_score, support = precision_recall_fscore_support(
+            gt, pred, average='binary', zero_division=0)
+        if len(np.unique(gt)) < 2:
+            warnings.warn(
+                "Only one class present in y_true. ROC AUC score is undefined.")
+            auc = float('nan')
+        else:
+            auc = roc_auc_score(gt, test_energy)
         print(
             "Accuracy : {:0.4f}, Precision : {:0.4f}, Recall : {:0.4f}, F-score : {:0.4f}, AUC : {:0.4f} ".format(
                 accuracy, precision,
